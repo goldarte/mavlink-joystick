@@ -1,0 +1,228 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#0D0D0D"
+    android:keepScreenOn="true">
+
+    <!-- ══════════════  LEFT STICK  ══════════════ -->
+    <com.goldarte.mavlinkjoystick.views.JoystickView
+        android:id="@+id/leftStick"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:layout_margin="6dp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toStartOf="@id/centerPanel"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintWidth_percent="0.355" />
+
+    <!-- ══════════════  CENTER PANEL  ════════════ -->
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/centerPanel"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:paddingTop="6dp"
+        android:paddingBottom="4dp"
+        android:paddingStart="2dp"
+        android:paddingEnd="2dp"
+        app:layout_constraintStart_toEndOf="@id/leftStick"
+        app:layout_constraintEnd_toStartOf="@id/rightStick"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintWidth_percent="0.278">
+
+        <!-- Horizon + Compass side-by-side -->
+        <LinearLayout
+            android:id="@+id/instrumentRow"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintBottom_toTopOf="@id/statusRow"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent">
+
+            <com.goldarte.mavlinkjoystick.views.ArtificialHorizonView
+                android:id="@+id/artificialHorizon"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1.65" />
+
+<!--            <com.goldarte.mavlinkjoystick.views.CompassView-->
+<!--                android:id="@+id/compassView"-->
+<!--                android:layout_width="0dp"-->
+<!--                android:layout_height="match_parent"-->
+<!--                android:layout_marginStart="4dp"-->
+<!--                android:layout_weight="1"-->
+<!--                android:background="#111418" />-->
+
+        </LinearLayout>
+
+        <!-- Status Row -->
+        <LinearLayout
+            android:id="@+id/statusRow"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center"
+            android:paddingTop="3dp"
+            android:paddingBottom="2dp"
+            app:layout_constraintBottom_toTopOf="@id/btnArm"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent">
+
+            <TextView
+                android:id="@+id/tvArmStatus"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="○ DISARMED"
+                android:textColor="#69F0AE"
+                android:textSize="12sp"
+                android:fontFamily="monospace"
+                android:letterSpacing="0.04"
+                android:layout_marginEnd="10dp" />
+
+            <TextView
+                android:id="@+id/tvAlt"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="ALT — m"
+                android:textColor="#BBBBBB"
+                android:textSize="11sp"
+                android:fontFamily="monospace" />
+
+        </LinearLayout>
+
+        <!-- ARM / DISARM Button -->
+        <Button
+            android:id="@+id/btnArm"
+            android:layout_width="match_parent"
+            android:layout_height="42dp"
+            android:text="ARM"
+            android:textColor="@android:color/white"
+            android:textSize="14sp"
+            android:letterSpacing="0.15"
+            android:fontFamily="monospace"
+            android:backgroundTint="#2E7D32"
+            app:layout_constraintBottom_toTopOf="@id/bottomBar"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent" />
+
+        <!-- Bottom bar: connect + link status -->
+        <LinearLayout
+            android:id="@+id/bottomBar"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingTop="2dp"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent">
+
+            <Button
+                android:id="@+id/btnConnect"
+                style="@style/Widget.AppCompat.Button.Borderless"
+                android:layout_width="wrap_content"
+                android:layout_height="32dp"
+                android:text="⚙ LINK"
+                android:textColor="#AAAAAA"
+                android:textSize="10sp"
+                android:fontFamily="monospace"
+                android:paddingStart="0dp"
+                android:paddingEnd="6dp"
+                android:minWidth="0dp" />
+
+            <TextView
+                android:id="@+id/tvConnectionStatus"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="○ NO LINK"
+                android:textColor="#FF5252"
+                android:textSize="10sp"
+                android:fontFamily="monospace"
+                android:ellipsize="end"
+                android:singleLine="true" />
+
+        </LinearLayout>
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+    <!-- ══════════════  RIGHT STICK  ══════════════ -->
+    <com.goldarte.mavlinkjoystick.views.JoystickView
+        android:id="@+id/rightStick"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:layout_margin="6dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toEndOf="@id/centerPanel"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintWidth_percent="0.355" />
+
+    <!-- ══ Left stick labels ══ -->
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:paddingBottom="4dp"
+        app:layout_constraintStart_toStartOf="@id/leftStick"
+        app:layout_constraintEnd_toEndOf="@id/leftStick"
+        app:layout_constraintBottom_toBottomOf="@id/leftStick">
+        <TextView
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="wrap_content"
+            android:text="YAW ←→"
+            android:textColor="#44FFFFFF"
+            android:textSize="10sp"
+            android:fontFamily="monospace"
+            android:gravity="center"/>
+        <TextView
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="wrap_content"
+            android:text="↑ THR ↓"
+            android:textColor="#44FFFFFF"
+            android:textSize="10sp"
+            android:fontFamily="monospace"
+            android:gravity="center"/>
+    </LinearLayout>
+
+    <!-- ══ Right stick labels ══ -->
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:paddingBottom="4dp"
+        app:layout_constraintStart_toStartOf="@id/rightStick"
+        app:layout_constraintEnd_toEndOf="@id/rightStick"
+        app:layout_constraintBottom_toBottomOf="@id/rightStick">
+        <TextView
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="wrap_content"
+            android:text="ROLL ←→"
+            android:textColor="#44FFFFFF"
+            android:textSize="10sp"
+            android:fontFamily="monospace"
+            android:gravity="center"/>
+        <TextView
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="wrap_content"
+            android:text="↑ PITCH ↓"
+            android:textColor="#44FFFFFF"
+            android:textSize="10sp"
+            android:fontFamily="monospace"
+            android:gravity="center"/>
+    </LinearLayout>
+
+</androidx.constraintlayout.widget.ConstraintLayout>

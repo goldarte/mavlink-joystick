@@ -1,0 +1,9 @@
+<resources>
+    <string name="app_name">Mavlink Joystick</string>
+    <string name="arm">ARM</string>
+    <string name="disarm">DISARM</string>
+    <string name="armed">● ARMED</string>
+    <string name="disarmed">○ DISARMED</string>
+    <string name="link">● LINK</string>
+    <string name="no_link">○ NO LINK</string>
+</resources>
