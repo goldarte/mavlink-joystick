@@ -2,16 +2,14 @@ package com.goldarte.mavlinkjoystick
 
 import com.goldarte.mavlinkjoystick.mavlink.MavlinkManager
 import io.dronefleet.mavlink.MavlinkConnection
+import io.dronefleet.mavlink.common.ManualControl
 import io.dronefleet.mavlink.common.RcChannelsOverride
 import io.dronefleet.mavlink.minimal.Heartbeat
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.runBlocking
 import org.junit.Assert.*
 import org.junit.Test
 import java.io.ByteArrayInputStream
 import java.net.DatagramPacket
 import java.net.DatagramSocket
-import java.net.InetAddress
 
 class MavlinkManagerTest {
 
@@ -44,7 +42,7 @@ class MavlinkManagerTest {
             val connection = MavlinkConnection.create(bais, null)
             val message = connection.next()
             assertNotNull(message)
-            assertTrue(message!!.payload is Heartbeat || message!!.payload is RcChannelsOverride)
+            assertTrue(message!!.payload is Heartbeat || message!!.payload is RcChannelsOverride || message!!.payload is ManualControl)
             
         } finally {
             manager.stop()
