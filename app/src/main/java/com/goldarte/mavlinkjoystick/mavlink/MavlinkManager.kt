@@ -26,7 +26,7 @@ import java.util.concurrent.atomic.AtomicBoolean
  * Defaults: host=192.168.4.1 (ESP telemetry AP), port=14550 (GCS port).
  */
 class MavlinkManager(
-    var targetHost: String = "0.0.0.0",
+    var targetHost: String = "255.255.255.255",
     var targetPort: Int = 14550,
     var listenPort: Int = 14550,
     var systemId: Int = 255,      // GCS system ID
@@ -41,8 +41,9 @@ class MavlinkManager(
     var onAttitudeReceived: ((roll: Float, pitch: Float, yaw: Float) -> Unit)? = null
 
     // ── Drone Discovery ──────────────────────────────────────────────────────
-    private var droneSystemId: Int = -1
-    private var droneComponentId: Int = -1
+    private var droneSystemId: Int = 1
+    private var droneComponentId: Int = 1
+    private var inited: Boolean = false
 
     // ── Manual Control (-1000..1000) ────────────────────────────────────────
     private var stickX: Int = 0 // Roll
@@ -68,25 +69,28 @@ class MavlinkManager(
     fun start() {
         if (running.getAndSet(true)) return
         Log.d("MavlinkManager", "Starting MAVLink Manager. Target: $targetHost:$targetPort, Listen: $listenPort")
-        updateTargetAddress()
-        try {
-            // Bind to listenPort. If fails (e.g. port taken by QGC), bind to any available port
-            socket = try {
-                DatagramSocket(listenPort).also {
-                    Log.d("MavlinkManager", "Bound to port ${it.localPort}")
+        
+        scope.launch {
+            updateTargetAddress()
+            try {
+                // Bind to listenPort. If fails (e.g. port taken by QGC), bind to any available port
+                socket = try {
+                    DatagramSocket(listenPort).also {
+                        Log.d("MavlinkManager", "Bound to port ${it.localPort}")
+                    }
+                } catch (e: Exception) {
+                    Log.w("MavlinkManager", "Failed to bind to $listenPort, using ephemeral port")
+                    DatagramSocket()
                 }
+                socket?.soTimeout = 500
             } catch (e: Exception) {
-                Log.w("MavlinkManager", "Failed to bind to $listenPort, using ephemeral port")
-                DatagramSocket()
+                Log.e("MavlinkManager", "Critical error opening socket", e)
+                running.set(false)
+                return@launch
             }
-            socket?.soTimeout = 500
-        } catch (e: Exception) {
-            Log.e("MavlinkManager", "Critical error opening socket", e)
-            running.set(false)
-            return
+            startSendLoop()
+            startReceiveLoop()
         }
-        startSendLoop()
-        startReceiveLoop()
     }
 
     fun stop() {
@@ -95,6 +99,7 @@ class MavlinkManager(
         recvJob?.cancel()
         socket?.close()
         socket = null
+        inited = false
     }
 
     /** Update control values. All inputs are -1.0..1.0 (throttle 0..1). */
@@ -107,13 +112,15 @@ class MavlinkManager(
 
     /** Send MAV_CMD_COMPONENT_ARM_DISARM (400). */
     fun sendArmCommand(arm: Boolean) {
-        val command = CommandLong.builder()
-            .targetSystem(droneSystemId)
-            .targetComponent(droneComponentId)
-            .command(MavCmd.MAV_CMD_COMPONENT_ARM_DISARM)
-            .param1(if (arm) 1f else 0f)
-            .build()
-        sendMavlinkMessage(command)
+        scope.launch {
+            val command = CommandLong.builder()
+                .targetSystem(droneSystemId)
+                .targetComponent(droneComponentId)
+                .command(MavCmd.MAV_CMD_COMPONENT_ARM_DISARM)
+                .param1(if (arm) 1f else 0f)
+                .build()
+            sendMavlinkMessage(command)
+        }
     }
 
     // ── Private helpers ──────────────────────────────────────────────────────
@@ -122,28 +129,33 @@ class MavlinkManager(
     private fun throttleToManual(v: Float) = (v.coerceIn(0f, 1f) * 1000).toInt()
 
     private fun updateTargetAddress() {
-        scope.launch {
-            try {
-                targetAddress = InetAddress.getByName(targetHost)
-            } catch (e: Exception) {
-                targetAddress = null
-            }
+        try {
+            targetAddress = InetAddress.getByName(targetHost)
+        } catch (e: Exception) {
+            targetAddress = null
         }
     }
 
     private fun startSendLoop() {
         sendJob = scope.launch {
+            var lastHeartbeatSentTime = 0L
             while (running.get()) {
-                sendRcOverride()
-                sendHeartbeat()
+                val now = System.currentTimeMillis()
+                if (isConnected) {
+                    sendManualControl()
+                    if (now - lastHeartbeatSentTime >= 1000L) {
+                        sendHeartbeat()
+                        lastHeartbeatSentTime = now
+                    }
+                }
                 
                 // Refresh connection status
-                val nowConnected = (System.currentTimeMillis() - lastHeartbeat) < HEARTBEAT_TIMEOUT_MS
+                val nowConnected = (now - lastHeartbeat) < HEARTBEAT_TIMEOUT_MS
                 if (nowConnected != isConnected) {
                     isConnected = nowConnected
                     onStateChanged?.invoke(isArmed, isConnected)
                 }
-                delay(50)  // 20 Hz
+                delay(20)  // 50 Hz
             }
         }
     }
@@ -184,17 +196,27 @@ class MavlinkManager(
                 try {
                     val message = connection.next() ?: continue
                     
-                    if (droneSystemId == -1 && droneComponentId == -1 && message.originSystemId != 0 && lastListenAddress is Inet4Address) {
-                        Log.i("MavlinkManager", "Discovered Drone: SysID=${message.originSystemId}, CompID=${message.originComponentId} on ${lastListenAddress}")
+                    val payload = message.payload
+                    
+                    // Discovery logic: Update drone ID and target host if we see a heartbeat
+                    if (payload is Heartbeat && !inited) {
                         droneSystemId = message.originSystemId
                         droneComponentId = message.originComponentId
-                        if (targetHost == "0.0.0.0" && lastListenAddress != null) {
-                            targetHost = lastListenAddress!!.hostAddress
+
+                        lastListenAddress?.let { addr ->
+                            if (addr is Inet4Address) {
+                                Log.i(
+                                    "MavlinkManager",
+                                    "Discovered Drone: SysID=${message.originSystemId}, CompID=${message.originComponentId} on ${addr.hostAddress}"
+                                )
+                                targetHost = addr.hostAddress
+                                updateTargetAddress()
+                                inited = true
+                            }
                         }
                     }
-                    
-                    val payload = message.payload
-                    Log.i("MavlinkManager", "payload = ${payload}")
+
+                    Log.v("MavlinkManager", "Received: ${payload.javaClass.simpleName} from ${message.originSystemId}")
                     when (payload) {
                         is Heartbeat -> handleHeartbeat(payload)
                         is Attitude -> {
@@ -238,17 +260,19 @@ class MavlinkManager(
 
     private fun sendMavlinkMessage(payload: Any) {
         val addr = targetAddress ?: return
-        try {
-            val outputStream = java.io.ByteArrayOutputStream()
-            val connection = MavlinkConnection.create(null, outputStream)
-            // Use send2 for MAVLink v2 as per user request
-            connection.send2(systemId, componentId, payload)
-            
-            val packetData = outputStream.toByteArray()
-            val dp = DatagramPacket(packetData, packetData.size, addr, targetPort)
-            socket?.send(dp)
-        } catch (e: Exception) {
-            // Network may not be available yet
+        scope.launch {
+            try {
+                val outputStream = java.io.ByteArrayOutputStream()
+                val connection = MavlinkConnection.create(null, outputStream)
+                // Use send2 for MAVLink v2 as per user request
+                connection.send2(systemId, componentId, payload)
+
+                val packetData = outputStream.toByteArray()
+                val dp = DatagramPacket(packetData, packetData.size, addr, targetPort)
+                socket?.send(dp)
+            } catch (e: Exception) {
+                Log.e("MavlinkManager", "Error sending MAVLink message to ${targetHost}:${targetPort}", e)
+            }
         }
     }
 
@@ -256,6 +280,7 @@ class MavlinkManager(
         lastHeartbeat = System.currentTimeMillis()
         val beforeConnected = isConnected
         isConnected = true
+        Log.i("MavlinkManager", "Got Heartbeat: ${heartbeat}")
         // Try raw bitwise check if flags() doesn't exist
         val nowArmed = (heartbeat.baseMode().value() and 0x80) != 0
         if (nowArmed != isArmed || !beforeConnected) {
