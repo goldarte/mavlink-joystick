@@ -20,7 +20,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 /**
  * Manages MAVLink communication over UDP.
  *
- * Sends RC_CHANNELS_OVERRIDE (msg 70) to control throttle/yaw/pitch/roll.
+ * Sends MANUAL_CONTROL (msg 69) to control throttle/yaw/pitch/roll.
  * Receives HEARTBEAT (msg 0) to track armed state and connection health.
  *
  * Defaults: host=192.168.4.1 (ESP telemetry AP), port=14550 (GCS port).
@@ -44,12 +44,11 @@ class MavlinkManager(
     private var droneSystemId: Int = -1
     private var droneComponentId: Int = -1
 
-    // ── Channels (PWM 1000–2000 µs, centre = 1500) ───────────────────────────
-    // ch1=Roll, ch2=Pitch, ch3=Throttle, ch4=Yaw  (Mode 2 mapping)
-    private var ch1Roll: Int = 1500
-    private var ch2Pitch: Int = 1500
-    private var ch3Throttle: Int = 1000   // Throttle defaults low
-    private var ch4Yaw: Int = 1500
+    // ── Manual Control (-1000..1000) ────────────────────────────────────────
+    private var stickX: Int = 0 // Roll
+    private var stickY: Int = 0 // Pitch
+    private var stickZ: Int = 0 // Throttle (0..1000 or -1000..1000)
+    private var stickR: Int = 0 // Yaw
 
     // ── Internals ────────────────────────────────────────────────────────────
     private val running = AtomicBoolean(false)
@@ -98,12 +97,12 @@ class MavlinkManager(
         socket = null
     }
 
-    /** Update channel values. All inputs are -1.0..1.0 (throttle 0..1). */
+    /** Update control values. All inputs are -1.0..1.0 (throttle 0..1). */
     fun setChannels(roll: Float, pitch: Float, throttle: Float, yaw: Float) {
-        ch1Roll      = axisToMicros(roll)
-        ch2Pitch     = axisToMicros(-pitch)   // Invert: forward stick = positive pitch
-        ch3Throttle  = throttleToMicros(throttle)
-        ch4Yaw       = axisToMicros(yaw)
+        stickX = axisToManual(roll)
+        stickY = axisToManual(-pitch) // Invert: forward stick = positive pitch
+        stickZ = throttleToManual(throttle)
+        stickR = axisToManual(yaw)
     }
 
     /** Send MAV_CMD_COMPONENT_ARM_DISARM (400). */
@@ -119,8 +118,8 @@ class MavlinkManager(
 
     // ── Private helpers ──────────────────────────────────────────────────────
 
-    private fun axisToMicros(v: Float) = (1500 + (v.coerceIn(-1f, 1f) * 500)).toInt()
-    private fun throttleToMicros(v: Float) = (1000 + v.coerceIn(0f, 1f) * 1000).toInt()
+    private fun axisToManual(v: Float) = (v.coerceIn(-1f, 1f) * 1000).toInt()
+    private fun throttleToManual(v: Float) = (v.coerceIn(0f, 1f) * 1000).toInt()
 
     private fun updateTargetAddress() {
         scope.launch {
@@ -214,16 +213,16 @@ class MavlinkManager(
         }
     }
 
-    private fun sendRcOverride() {
-        val rcOverride = RcChannelsOverride.builder()
-            .targetSystem(droneSystemId)
-            .targetComponent(droneComponentId)
-            .chan1Raw(ch1Roll)
-            .chan2Raw(ch2Pitch)
-            .chan3Raw(ch3Throttle)
-            .chan4Raw(ch4Yaw)
+    private fun sendManualControl() {
+        val manualControl = ManualControl.builder()
+            .target(droneSystemId)
+            .x(stickY) // Pitch
+            .y(stickX) // Roll
+            .z(stickZ) // Throttle
+            .r(stickR) // Yaw
+            .buttons(0)
             .build()
-        sendMavlinkMessage(rcOverride)
+        sendMavlinkMessage(manualControl)
     }
 
     private fun sendHeartbeat() {
