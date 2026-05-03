@@ -1,5 +1,6 @@
 package com.goldarte.mavlinkjoystick
 
+import android.content.Context
 import android.graphics.Color
 import android.os.Bundle
 import android.view.View
@@ -53,7 +54,7 @@ class MainActivity : AppCompatActivity() {
         horizon              = findViewById(R.id.artificialHorizon)
         btnArm               = findViewById(R.id.btnArm)
         tvStatus             = findViewById(R.id.tvArmStatus)
-        tvAlt                = findViewById(R.id.tvAlt)
+//        tvAlt                = findViewById(R.id.tvAlt)
         tvConnectionStatus   = findViewById(R.id.tvConnectionStatus)
         btnConnect           = findViewById(R.id.btnConnect)
 //        compass              = findViewById(R.id.compassView)
@@ -76,6 +77,7 @@ class MainActivity : AppCompatActivity() {
 
         // ── MAVLink ──────────────────────────────────────────────────────────
         mavlink = MavlinkManager()
+        loadSettings()
 
         mavlink.onStateChanged = { armed, connected ->
             runOnUiThread { updateUI(armed, connected) }
@@ -108,12 +110,14 @@ class MainActivity : AppCompatActivity() {
         btnConnect.setOnClickListener {
             ConnectionDialogFragment(
                 currentHost = mavlink.targetHost,
-                currentPort = mavlink.targetPort
-            ) { host, port ->
+                currentPort = mavlink.targetPort,
+                currentListenPort = mavlink.listenPort
+            ) { host, port, listenPort ->
                 mavlink.stop()
                 mavlink.targetHost = host
                 mavlink.targetPort = port
-                mavlink.listenPort = port
+                mavlink.listenPort = listenPort
+                saveSettings(host, port, listenPort)
                 mavlink.start()
                 tvConnectionStatus.text = "Connecting to $host:$port…"
             }.show(supportFragmentManager, "connect")
@@ -121,6 +125,23 @@ class MainActivity : AppCompatActivity() {
 
         updateUI(armed = false, connected = false)
         mavlink.start()
+    }
+
+    private fun loadSettings() {
+        val prefs = getSharedPreferences("mavlink_prefs", Context.MODE_PRIVATE)
+        mavlink.targetHost = prefs.getString("target_host", "255.255.255.255") ?: "255.255.255.255"
+        mavlink.targetPort = prefs.getInt("target_port", 14550)
+        mavlink.listenPort = prefs.getInt("listen_port", 14550)
+    }
+
+    private fun saveSettings(host: String, port: Int, listenPort: Int) {
+        val prefs = getSharedPreferences("mavlink_prefs", Context.MODE_PRIVATE)
+        prefs.edit().apply {
+            putString("target_host", host)
+            putInt("target_port", port)
+            putInt("listen_port", listenPort)
+            apply()
+        }
     }
 
     override fun onDestroy() {
@@ -148,7 +169,7 @@ class MainActivity : AppCompatActivity() {
 
         // Connection status
         if (connected) {
-            tvConnectionStatus.text = "● LINK  ${mavlink.targetHost}:${mavlink.targetPort}"
+            tvConnectionStatus.text = "● ${mavlink.targetHost}:${mavlink.targetPort}"
             tvConnectionStatus.setTextColor(Color.parseColor("#69F0AE"))
         } else {
             tvConnectionStatus.text = "○ NO LINK"
