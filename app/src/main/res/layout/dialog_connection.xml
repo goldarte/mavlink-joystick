@@ -1,63 +1,90 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout
+<ScrollView
     xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:orientation="vertical"
-    android:padding="24dp"
     android:background="#1E1E1E">
 
-    <TextView
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Target IP Address"
-        android:textColor="#AAAAAA"
-        android:textSize="12sp"
-        android:fontFamily="monospace"
-        android:paddingBottom="4dp"/>
+        android:orientation="vertical"
+        android:padding="24dp">
 
-    <EditText
-        android:id="@+id/etHost"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:inputType="textUri"
-        android:hint="192.168.4.1"
-        android:textColor="#FFFFFF"
-        android:textColorHint="#555555"
-        android:backgroundTint="#444444"
-        android:fontFamily="monospace"
-        android:textSize="16sp"
-        android:paddingBottom="8dp"/>
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Target IP Address"
+            android:textColor="#AAAAAA"
+            android:textSize="12sp"
+            android:fontFamily="monospace"
+            android:paddingBottom="4dp"/>
 
-    <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="UDP Port"
-        android:textColor="#AAAAAA"
-        android:textSize="12sp"
-        android:fontFamily="monospace"
-        android:paddingTop="12dp"
-        android:paddingBottom="4dp"/>
+        <EditText
+            android:id="@+id/etHost"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:inputType="textUri"
+            android:hint="192.168.4.1"
+            android:textColor="#FFFFFF"
+            android:textColorHint="#555555"
+            android:backgroundTint="#444444"
+            android:fontFamily="monospace"
+            android:textSize="16sp"
+            android:paddingBottom="8dp"/>
 
-    <EditText
-        android:id="@+id/etPort"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:inputType="number"
-        android:hint="14550"
-        android:textColor="#FFFFFF"
-        android:textColorHint="#555555"
-        android:backgroundTint="#444444"
-        android:fontFamily="monospace"
-        android:textSize="16sp"/>
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="UDP Port"
+            android:textColor="#AAAAAA"
+            android:textSize="12sp"
+            android:fontFamily="monospace"
+            android:paddingTop="12dp"
+            android:paddingBottom="4dp"/>
 
-    <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Connect to your drone's telemetry radio or SITL simulator.\nDefault: 192.168.4.1:14550 (ESP32 telemetry AP)"
-        android:textColor="#666666"
-        android:textSize="11sp"
-        android:paddingTop="16dp"
-        android:lineSpacingExtra="3dp"/>
+        <EditText
+            android:id="@+id/etPort"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:inputType="number"
+            android:hint="14550"
+            android:textColor="#FFFFFF"
+            android:textColorHint="#555555"
+            android:backgroundTint="#444444"
+            android:fontFamily="monospace"
+            android:textSize="16sp"/>
 
-</LinearLayout>
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Listen Port (Local UDP)"
+            android:textColor="#AAAAAA"
+            android:textSize="12sp"
+            android:fontFamily="monospace"
+            android:paddingTop="12dp"
+            android:paddingBottom="4dp"/>
+
+        <EditText
+            android:id="@+id/etListenPort"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:inputType="number"
+            android:hint="14550"
+            android:textColor="#FFFFFF"
+            android:textColorHint="#555555"
+            android:backgroundTint="#444444"
+            android:fontFamily="monospace"
+            android:textSize="16sp"/>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Connect to your drone's telemetry radio or SITL simulator.\nDefault: 192.168.4.1:14550 (ESP32 telemetry AP)"
+            android:textColor="#666666"
+            android:textSize="11sp"
+            android:paddingTop="16dp"
+            android:lineSpacingExtra="3dp"/>
+
+    </LinearLayout>
+</ScrollView>
