@@ -11,7 +11,6 @@ import androidx.appcompat.app.AppCompatActivity
 import com.goldarte.mavlinkjoystick.ConnectionDialogFragment
 import com.goldarte.mavlinkjoystick.mavlink.MavlinkManager
 import com.goldarte.mavlinkjoystick.views.ArtificialHorizonView
-import com.goldarte.mavlinkjoystick.views.CompassView
 import com.goldarte.mavlinkjoystick.views.JoystickView
 
 class MainActivity : AppCompatActivity() {
@@ -22,10 +21,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var horizon: ArtificialHorizonView
     private lateinit var btnArm: Button
     private lateinit var tvStatus: TextView
-    private lateinit var tvAlt: TextView
     private lateinit var tvConnectionStatus: TextView
     private lateinit var btnConnect: Button
-    private lateinit var compass: CompassView
 
     // Local axis values (updated by joystick callbacks)
     private var throttle = 0f
@@ -54,10 +51,8 @@ class MainActivity : AppCompatActivity() {
         horizon              = findViewById(R.id.artificialHorizon)
         btnArm               = findViewById(R.id.btnArm)
         tvStatus             = findViewById(R.id.tvArmStatus)
-//        tvAlt                = findViewById(R.id.tvAlt)
         tvConnectionStatus   = findViewById(R.id.tvConnectionStatus)
         btnConnect           = findViewById(R.id.btnConnect)
-//        compass              = findViewById(R.id.compassView)
 
         // ── Left stick: Throttle (Y, no spring) + Yaw (X, spring) ─────────────
         leftStick.isThrottleMode = true
