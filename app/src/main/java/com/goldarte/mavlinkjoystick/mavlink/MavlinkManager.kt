@@ -142,7 +142,7 @@ class MavlinkManager(
             var lastHeartbeatSentTime = 0L
             while (running.get()) {
                 val now = System.currentTimeMillis()
-                if (isConnected) {
+                if (inited) {
                     sendManualControl()
                     if (now - lastHeartbeatSentTime >= 1000L) {
                         sendHeartbeat()
