@@ -39,6 +39,7 @@ class MavlinkManager(
         private set
     var onStateChanged: ((armed: Boolean, connected: Boolean) -> Unit)? = null
     var onAttitudeReceived: ((roll: Float, pitch: Float, yaw: Float) -> Unit)? = null
+    var onBatteryVoltageReceived: ((voltage: Float) -> Unit)? = null
 
     // ── Drone Discovery ──────────────────────────────────────────────────────
     private var droneSystemId: Int = 1
@@ -226,6 +227,13 @@ class MavlinkManager(
                         is AttitudeQuaternion -> {
                             Log.v("MavlinkManager", "AttitudeQuaternion: q=[${payload.q1()}, ${payload.q2()}, ${payload.q3()}, ${payload.q4()}]")
                             handleAttitudeQuaternion(payload)
+                        }
+                        is BatteryStatus -> {
+                            // Sum all non-UINT16_MAX voltages
+                            val totalMv = payload.voltages().filter { it < 65535 }.sum()
+                            val volt = totalMv.toFloat() / 1000f
+                            Log.v("MavlinkManager", "Battery: $volt V")
+                            onBatteryVoltageReceived?.invoke(volt)
                         }
                     }
                 } catch (e: Exception) {
