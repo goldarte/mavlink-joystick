@@ -12,6 +12,7 @@ import com.goldarte.mavlinkjoystick.ConnectionDialogFragment
 import com.goldarte.mavlinkjoystick.mavlink.MavlinkManager
 import com.goldarte.mavlinkjoystick.views.ArtificialHorizonView
 import com.goldarte.mavlinkjoystick.views.JoystickView
+import com.goldarte.mavlinkjoystick.views.CompassView
 
 import java.util.Locale
 
@@ -21,6 +22,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var leftStick: JoystickView
     private lateinit var rightStick: JoystickView
     private lateinit var horizon: ArtificialHorizonView
+    private lateinit var compass: CompassView
     private lateinit var btnArm: Button
     private lateinit var tvStatus: TextView
     private lateinit var tvBattery: TextView
@@ -52,6 +54,7 @@ class MainActivity : AppCompatActivity() {
         leftStick            = findViewById(R.id.leftStick)
         rightStick           = findViewById(R.id.rightStick)
         horizon              = findViewById(R.id.artificialHorizon)
+        compass              = findViewById(R.id.compass)
         btnArm               = findViewById(R.id.btnArm)
         tvStatus             = findViewById(R.id.tvArmStatus)
         tvBattery            = findViewById(R.id.tvBattery)
@@ -86,7 +89,7 @@ class MainActivity : AppCompatActivity() {
             runOnUiThread {
                 horizon.setAttitude(rollDeg, pitchDeg)
                 val heading = ((yawDeg % 360f) + 360f) % 360f
-//                compass.setHeading(heading)
+                compass.setHeading(heading)
             }
         }
 

@@ -50,7 +50,13 @@
                 android:id="@+id/artificialHorizon"
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
-                android:layout_weight="1.65" />
+                android:layout_weight="1" />
+
+            <com.goldarte.mavlinkjoystick.views.CompassView
+                android:id="@+id/compass"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1" />
 
         </LinearLayout>
 
