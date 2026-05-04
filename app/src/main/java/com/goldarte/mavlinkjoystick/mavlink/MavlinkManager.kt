@@ -64,6 +64,7 @@ class MavlinkManager(
 
     private var targetAddress: InetAddress? = null
     private var lastListenAddress: InetAddress? = null
+    private var lastListenPort: Int = targetPort
 
     // ── Public API ───────────────────────────────────────────────────────────
 
@@ -180,6 +181,7 @@ class MavlinkManager(
                             socket?.receive(datagramPacket)
                             Log.v("MavlinkManager", "Received UDP packet: ${datagramPacket.length} bytes from ${datagramPacket.address}:${datagramPacket.port}")
                             lastListenAddress = datagramPacket.address
+                            lastListenPort = datagramPacket.port
                             buffer = datagramPacket.data
                             pos = 0
                             limit = datagramPacket.length
@@ -198,21 +200,26 @@ class MavlinkManager(
                     val message = connection.next() ?: continue
                     
                     val payload = message.payload
-                    
-                    // Discovery logic: Update drone ID and target host if we see a heartbeat
-                    if (payload is Heartbeat && !inited) {
-                        droneSystemId = message.originSystemId
-                        droneComponentId = message.originComponentId
 
+                    // Discovery logic: Update drone ID and target host if we see a heartbeat
+                    if (!inited && payload is Heartbeat) {
                         lastListenAddress?.let { addr ->
-                            if (addr is Inet4Address) {
+                            if (addr is Inet4Address && addr.hostAddress != null) {
+                                droneSystemId = message.originSystemId
+                                droneComponentId = message.originComponentId
+
                                 Log.i(
                                     "MavlinkManager",
-                                    "Discovered Drone: SysID=${message.originSystemId}, CompID=${message.originComponentId} on ${addr.hostAddress}"
+                                    "Discovered Drone: SysID=${message.originSystemId}, CompID=${message.originComponentId} on ${addr.hostAddress}:${lastListenPort}"
                                 )
-                                targetHost = addr.hostAddress
+
+                                targetHost = addr.hostAddress!!
+                                targetPort = lastListenPort
+
                                 updateTargetAddress()
                                 inited = true
+                                isConnected = true
+                                onStateChanged?.invoke(isArmed, isConnected)
                             }
                         }
                     }
