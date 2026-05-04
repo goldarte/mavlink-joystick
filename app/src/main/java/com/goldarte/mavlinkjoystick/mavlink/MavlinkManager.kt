@@ -1,5 +1,10 @@
 package com.goldarte.mavlinkjoystick.mavlink
 
+import android.content.Context
+import android.net.ConnectivityManager
+import android.net.Network
+import android.net.NetworkCapabilities
+import android.net.NetworkRequest
 import android.util.Log
 import io.dronefleet.mavlink.MavlinkConnection
 import io.dronefleet.mavlink.common.*
@@ -26,6 +31,7 @@ import java.util.concurrent.atomic.AtomicBoolean
  * Defaults: host=192.168.4.1 (ESP telemetry AP), port=14550 (GCS port).
  */
 class MavlinkManager(
+    private val context: Context,
     var targetHost: String = "255.255.255.255",
     var targetPort: Int = 14550,
     var listenPort: Int = 14550,
@@ -66,12 +72,39 @@ class MavlinkManager(
     private var lastListenAddress: InetAddress? = null
     private var lastListenPort: Int = targetPort
 
+    private val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+    private val networkCallback = object : ConnectivityManager.NetworkCallback() {
+        override fun onAvailable(network: Network) {
+            Log.i("MavlinkManager", "Network available: resetting discovery (inited = false)")
+            inited = false
+            isConnected = false
+            onStateChanged?.invoke(isArmed, isConnected)
+        }
+
+        override fun onLost(network: Network) {
+            Log.i("MavlinkManager", "Network lost: resetting discovery (inited = false)")
+            inited = false
+            isConnected = false
+            onStateChanged?.invoke(isArmed, isConnected)
+        }
+    }
+
     // ── Public API ───────────────────────────────────────────────────────────
 
     fun start() {
         if (running.getAndSet(true)) return
         Log.d("MavlinkManager", "Starting MAVLink Manager. Target: $targetHost:$targetPort, Listen: $listenPort")
         
+        // Register for network changes
+        try {
+            val request = NetworkRequest.Builder()
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                .build()
+            connectivityManager.registerNetworkCallback(request, networkCallback)
+        } catch (e: Exception) {
+            Log.e("MavlinkManager", "Failed to register network callback", e)
+        }
+
         scope.launch {
             updateTargetAddress()
             try {
@@ -99,6 +132,11 @@ class MavlinkManager(
         running.set(false)
         sendJob?.cancel()
         recvJob?.cancel()
+        try {
+            connectivityManager.unregisterNetworkCallback(networkCallback)
+        } catch (e: Exception) {
+            // Ignore if already unregistered
+        }
         socket?.close()
         socket = null
         inited = false
