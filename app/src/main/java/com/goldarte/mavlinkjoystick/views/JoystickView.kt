@@ -94,18 +94,18 @@ class JoystickView @JvmOverloads constructor(
 
     // ── Draw ──────────────────────────────────────────────────────────────────
     override fun onDraw(canvas: Canvas) {
-        // Outer ring fill
-        canvas.drawCircle(cx, cy, radius, ringFillPaint)
-        // Outer ring border
-        canvas.drawCircle(cx, cy, radius, ringPaint)
+        // Outer square fill
+        canvas.drawRect(cx - radius, cy - radius, cx + radius, cy + radius, ringFillPaint)
+        // Outer square border
+        canvas.drawRect(cx - radius, cy - radius, cx + radius, cy + radius, ringPaint)
 
         // Cross hair
         canvas.drawLine(cx - radius, cy, cx + radius, cy, crossPaint)
         canvas.drawLine(cx, cy - radius, cx, cy + radius, crossPaint)
 
-        // Inner guidance circle
+        // Inner guidance square
         ringPaint.alpha = 60
-        canvas.drawCircle(cx, cy, radius * 0.5f, ringPaint)
+        canvas.drawRect(cx - radius * 0.5f, cy - radius * 0.5f, cx + radius * 0.5f, cy + radius * 0.5f, ringPaint)
         ringPaint.alpha = 0xFF
 
         // Glow
@@ -149,16 +149,8 @@ class JoystickView @JvmOverloads constructor(
     }
 
     private fun moveKnob(tx: Float, ty: Float) {
-        val dx = tx - cx
-        val dy = ty - cy
-        val dist = sqrt(dx * dx + dy * dy)
-        if (dist > radius) {
-            knobX = cx + dx / dist * radius
-            knobY = cy + dy / dist * radius
-        } else {
-            knobX = tx
-            knobY = ty
-        }
+        knobX = tx.coerceIn(cx - radius, cx + radius)
+        knobY = ty.coerceIn(cy - radius, cy + radius)
         computeValues()
         invalidate()
     }
