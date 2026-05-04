@@ -155,6 +155,15 @@ class JoystickView @JvmOverloads constructor(
         invalidate()
     }
 
+    /**
+     * Resets the knob to its default position (center, or bottom for throttle).
+     */
+    fun resetToDefault() {
+        resetKnob()
+        computeValues()
+        invalidate()
+    }
+
     private fun springBack() {
         // X always springs to centre; Y springs only if NOT throttle mode
         val targetX = cx

@@ -100,6 +100,7 @@ class MainActivity : AppCompatActivity() {
         btnArm.setOnClickListener {
             if (mavlink.isArmed) {
                 mavlink.sendArmCommand(false)
+                leftStick.resetToDefault()
             } else {
                 mavlink.sendArmCommand(true)
             }
@@ -108,6 +109,7 @@ class MainActivity : AppCompatActivity() {
         // Long-press ARM for safety: disarm immediately
         btnArm.setOnLongClickListener {
             mavlink.sendArmCommand(false)
+            leftStick.resetToDefault()
             true
         }
 
