@@ -26,6 +26,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var btnArm: Button
     private lateinit var tvStatus: TextView
     private lateinit var tvBattery: TextView
+    private lateinit var tvFlightMode: TextView
     private lateinit var tvConnectionStatus: TextView
     private lateinit var btnConnect: Button
 
@@ -58,6 +59,7 @@ class MainActivity : AppCompatActivity() {
         btnArm               = findViewById(R.id.btnArm)
         tvStatus             = findViewById(R.id.tvArmStatus)
         tvBattery            = findViewById(R.id.tvBattery)
+        tvFlightMode         = findViewById(R.id.tvFlightMode)
         tvConnectionStatus   = findViewById(R.id.tvConnectionStatus)
         btnConnect           = findViewById(R.id.btnConnect)
 
@@ -96,6 +98,12 @@ class MainActivity : AppCompatActivity() {
         mavlink.onBatteryVoltageReceived = { voltage ->
             runOnUiThread {
                 tvBattery.text = String.format(Locale.US, "%.1fV", voltage)
+            }
+        }
+
+        mavlink.onFlightModeReceived = { mode ->
+            runOnUiThread {
+                tvFlightMode.text = mode
             }
         }
 

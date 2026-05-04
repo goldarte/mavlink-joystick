@@ -46,6 +46,7 @@ class MavlinkManager(
     var onStateChanged: ((armed: Boolean, connected: Boolean) -> Unit)? = null
     var onAttitudeReceived: ((roll: Float, pitch: Float, yaw: Float) -> Unit)? = null
     var onBatteryVoltageReceived: ((voltage: Float) -> Unit)? = null
+    var onFlightModeReceived: ((mode: String) -> Unit)? = null
 
     // ── Drone Discovery ──────────────────────────────────────────────────────
     private var droneSystemId: Int = 1
@@ -334,12 +335,86 @@ class MavlinkManager(
         val beforeConnected = isConnected
         isConnected = true
         Log.i("MavlinkManager", "Got Heartbeat: ${heartbeat}")
+
+        // Flight mode
+        val modeName = getFlightModeName(heartbeat)
+        onFlightModeReceived?.invoke(modeName)
+
         // Try raw bitwise check if flags() doesn't exist
         val nowArmed = (heartbeat.baseMode().value() and 0x80) != 0
         if (nowArmed != isArmed || !beforeConnected) {
             isArmed = nowArmed
             onStateChanged?.invoke(isArmed, isConnected)
         }
+    }
+
+    private fun getFlightModeName(heartbeat: Heartbeat): String {
+        val mode = heartbeat.customMode()
+        val autopilot = heartbeat.autopilot().entry()
+
+        if (autopilot == MavAutopilot.MAV_AUTOPILOT_ARDUPILOTMEGA) {
+            return when (mode.toInt()) {
+                0 -> "STABILIZE"
+                1 -> "ACRO"
+                2 -> "ALT_HOLD"
+                3 -> "AUTO"
+                4 -> "GUIDED"
+                5 -> "LOITER"
+                6 -> "RTL"
+                7 -> "CIRCLE"
+                9 -> "LAND"
+                11 -> "DRIFT"
+                13 -> "SPORT"
+                14 -> "FLIP"
+                15 -> "AUTOTUNE"
+                16 -> "POSHOLD"
+                17 -> "BRAKE"
+                18 -> "THROW"
+                19 -> "AVOID_ADSB"
+                20 -> "GUIDED_NOGPS"
+                21 -> "SMART_RTL"
+                22 -> "FLOWHOLD"
+                23 -> "FOLLOW"
+                24 -> "ZIGZAG"
+                25 -> "SYSTEMID"
+                26 -> "AUTOROTATE"
+                27 -> "AUTO_RTL"
+                else -> "MODE($mode)"
+            }
+        } else if (autopilot == MavAutopilot.MAV_AUTOPILOT_PX4) {
+            val customMode = mode.toLong()
+            val mainMode = ((customMode shr 16) and 0xFF).toInt()
+            val subMode = ((customMode shr 24) and 0xFF).toInt()
+
+            return when (mainMode) {
+                1 -> "MANUAL"
+                2 -> "ALTCTL"
+                3 -> "POSCTL"
+                4 -> when (subMode) {
+                    2 -> "TAKEOFF"
+                    3 -> "LOITER"
+                    4 -> "MISSION"
+                    5 -> "RTL"
+                    6 -> "LAND"
+                    8 -> "FOLLOW"
+                    else -> "AUTO"
+                }
+                5 -> "ACRO"
+                6 -> "OFFBOARD"
+                7 -> "STABILIZED"
+                else -> "MODE($mainMode:$subMode)"
+            }
+        } else if (autopilot == MavAutopilot.MAV_AUTOPILOT_GENERIC) {
+            // just detecting drone as flix
+            return when (mode.toInt()) {
+                0 -> "RAW"
+                1 -> "ACRO"
+                2 -> "STAB"
+                3 -> "AUTO"
+                else -> "MODE($mode)"
+            }
+        }
+        return "MODE($mode)"
     }
 
     private fun handleAttitude(attitude: Attitude) {
