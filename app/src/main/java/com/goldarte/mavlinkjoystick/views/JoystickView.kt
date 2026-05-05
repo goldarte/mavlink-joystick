@@ -38,6 +38,12 @@ class JoystickView @JvmOverloads constructor(
             field = value
             invalidate()
         }
+    var knobColor: Int = Color.parseColor("#FF5C8D")
+        set(value) {
+            field = value
+            updateGradients()
+            invalidate()
+        }
     var stickSizeFactor: Float = 0.65f
         set(value) {
             field = value.coerceIn(0.25f, 1.0f)
@@ -109,16 +115,29 @@ class JoystickView @JvmOverloads constructor(
     }
 
     private fun updateGradients() {
+        if (knobRadius <= 0) return
+
+        val colorStart = knobColor
+        // Darken the color for the gradient end
+        val hsv = FloatArray(3)
+        Color.colorToHSV(colorStart, hsv)
+        hsv[2] *= 0.8f
+        val colorEnd = Color.HSVToColor(hsv)
+
         knobPaint.shader = RadialGradient(
             knobX, knobY - knobRadius * 0.3f,
             knobRadius,
-            intArrayOf(Color.parseColor("#FF5C8D"), Color.parseColor("#CC1A4E")),
+            intArrayOf(colorStart, colorEnd),
             null, Shader.TileMode.CLAMP
         )
+        
+        // Glow color: same as knob but with alpha
+        val glowColor = Color.argb(85, Color.red(colorStart), Color.green(colorStart), Color.blue(colorStart))
+        
         glowPaint.shader = RadialGradient(
             knobX, knobY,
             knobRadius * 2.2f,
-            intArrayOf(Color.parseColor("#55FF5C8D"), Color.TRANSPARENT),
+            intArrayOf(glowColor, Color.TRANSPARENT),
             null, Shader.TileMode.CLAMP
         )
     }
@@ -159,11 +178,7 @@ class JoystickView @JvmOverloads constructor(
         canvas.drawCircle(knobX, knobY, knobRadius * 2.2f, glowPaint)
 
         // Knob
-        knobPaint.shader = RadialGradient(
-            knobX, knobY - knobRadius * 0.3f, knobRadius,
-            intArrayOf(Color.parseColor("#FF7BAD"), Color.parseColor("#CC1A4E")),
-            null, Shader.TileMode.CLAMP
-        )
+        updateGradients() // Ensure gradients are up to date with current knob position
         canvas.drawCircle(knobX, knobY, knobRadius, knobPaint)
         canvas.drawCircle(knobX, knobY, knobRadius, knobBorderPaint)
     }

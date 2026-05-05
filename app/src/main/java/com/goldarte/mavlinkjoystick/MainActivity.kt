@@ -13,6 +13,7 @@ import com.goldarte.mavlinkjoystick.mavlink.MavlinkManager
 import com.goldarte.mavlinkjoystick.views.ArtificialHorizonView
 import com.goldarte.mavlinkjoystick.views.JoystickView
 import com.goldarte.mavlinkjoystick.views.CompassView
+import com.goldarte.mavlinkjoystick.utils.CurveUtils
 
 import java.util.Locale
 
@@ -32,10 +33,32 @@ class MainActivity : AppCompatActivity() {
     private lateinit var btnConnect: Button
 
     // Local axis values (updated by joystick callbacks)
+    private var throttleRaw = 0f
+    private var yawRaw = 0f
+    private var pitchRaw = 0f
+    private var rollRaw = 0f
+
+    // Curved values
     private var throttle = 0f
     private var yaw = 0f
     private var pitch = 0f
     private var roll = 0f
+
+    private var rollWeight = 1.0f
+    private var rollOffset = 0.0f
+    private var rollExpo = 0.0f
+
+    private var pitchWeight = 1.0f
+    private var pitchOffset = 0.0f
+    private var pitchExpo = 0.0f
+
+    private var yawWeight = 1.0f
+    private var yawOffset = 0.0f
+    private var yawExpo = 0.0f
+
+    private var thrWeight = 1.0f
+    private var thrOffset = 0.0f
+    private var thrExpo = 0.0f
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -68,16 +91,16 @@ class MainActivity : AppCompatActivity() {
         // ── Left stick: Throttle (Y, no spring) + Yaw (X, spring) ─────────────
         leftStick.isThrottleMode = true
         leftStick.onChanged = { x, y ->
-            yaw      = x
-            throttle = y
+            yawRaw      = x
+            throttleRaw = y
             pushChannels()
         }
 
         // ── Right stick: Pitch (Y) + Roll (X) ─────────────────────────────────
         rightStick.isThrottleMode = false
         rightStick.onChanged = { x, y ->
-            roll  = x
-            pitch = y
+            rollRaw  = x
+            pitchRaw = y
             pushChannels()
         }
 
@@ -192,6 +215,28 @@ class MainActivity : AppCompatActivity() {
         val showCircleBoundaries = prefs.getBoolean("show_circle_boundaries", false)
         leftStick.showCircleBoundaries = showCircleBoundaries
         rightStick.showCircleBoundaries = showCircleBoundaries
+
+        val knobColorStr = prefs.getString("knob_color", "#FF5C8D") ?: "#FF5C8D"
+        val knobColor = Color.parseColor(knobColorStr)
+        leftStick.knobColor = knobColor
+        rightStick.knobColor = knobColor
+
+        // Curves
+        rollWeight = prefs.getFloat("roll_weight", 1.0f)
+        rollOffset = prefs.getFloat("roll_offset", 0.0f)
+        rollExpo = prefs.getFloat("roll_expo", 0.0f)
+
+        pitchWeight = prefs.getFloat("pitch_weight", 1.0f)
+        pitchOffset = prefs.getFloat("pitch_offset", 0.0f)
+        pitchExpo = prefs.getFloat("pitch_expo", 0.0f)
+
+        yawWeight = prefs.getFloat("yaw_weight", 1.0f)
+        yawOffset = prefs.getFloat("yaw_offset", 0.0f)
+        yawExpo = prefs.getFloat("yaw_expo", 0.0f)
+
+        thrWeight = prefs.getFloat("throttle_weight", 1.0f)
+        thrOffset = prefs.getFloat("throttle_offset", 0.0f)
+        thrExpo = prefs.getFloat("throttle_expo", 0.0f)
     }
 
     override fun onDestroy() {
@@ -200,6 +245,11 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun pushChannels() {
+        roll = CurveUtils.applyCurve(rollRaw, rollWeight, rollOffset, rollExpo)
+        pitch = CurveUtils.applyCurve(pitchRaw, pitchWeight, pitchOffset, pitchExpo)
+        yaw = CurveUtils.applyCurve(yawRaw, yawWeight, yawOffset, yawExpo)
+        throttle = CurveUtils.applyCurve(throttleRaw, thrWeight, thrOffset, thrExpo)
+
         mavlink.setChannels(roll, pitch, throttle, yaw)
     }
 

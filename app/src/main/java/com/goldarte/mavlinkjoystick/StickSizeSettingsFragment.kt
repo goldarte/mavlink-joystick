@@ -5,29 +5,24 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.CheckBox
 import android.widget.SeekBar
 import android.widget.TextView
 import androidx.fragment.app.Fragment
 
-class StickSettingsFragment : Fragment() {
+class StickSizeSettingsFragment : Fragment() {
 
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View? {
-        val view = inflater.inflate(R.layout.fragment_stick_settings, container, false)
+        val view = inflater.inflate(R.layout.fragment_stick_size_settings, container, false)
 
         val tvLeftValue = view.findViewById<TextView>(R.id.tvLeftStickSizeValue)
         val sbLeft = view.findViewById<SeekBar>(R.id.sbLeftStickSize)
         
         val tvRightValue = view.findViewById<TextView>(R.id.tvRightStickSizeValue)
         val sbRight = view.findViewById<SeekBar>(R.id.sbRightStickSize)
-        
-        val cbCircular = view.findViewById<CheckBox>(R.id.cbShowCircularArea)
-        val cbSquare = view.findViewById<CheckBox>(R.id.cbShowSquareArea)
-        val cbCircleBoundaries = view.findViewById<CheckBox>(R.id.cbShowCircleBoundaries)
 
         val prefs = requireContext().getSharedPreferences("mavlink_prefs", Context.MODE_PRIVATE)
         
@@ -60,24 +55,6 @@ class StickSettingsFragment : Fragment() {
             override fun onStartTrackingTouch(seekBar: SeekBar?) {}
             override fun onStopTrackingTouch(seekBar: SeekBar?) {}
         })
-
-        // Circular toggle (both)
-        cbCircular.isChecked = prefs.getBoolean("show_circular_area", true)
-        cbCircular.setOnCheckedChangeListener { _, isChecked ->
-            prefs.edit().putBoolean("show_circular_area", isChecked).apply()
-        }
-
-        // Square toggle (both)
-        cbSquare.isChecked = prefs.getBoolean("show_square_area", true)
-        cbSquare.setOnCheckedChangeListener { _, isChecked ->
-            prefs.edit().putBoolean("show_square_area", isChecked).apply()
-        }
-
-        // Circle boundaries toggle (both)
-        cbCircleBoundaries.isChecked = prefs.getBoolean("show_circle_boundaries", false)
-        cbCircleBoundaries.setOnCheckedChangeListener { _, isChecked ->
-            prefs.edit().putBoolean("show_circle_boundaries", isChecked).apply()
-        }
 
         return view
     }

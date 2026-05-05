@@ -14,7 +14,9 @@ import androidx.viewpager2.widget.ViewPager2
 class SettingsActivity : AppCompatActivity() {
 
     private lateinit var tabConnection: TextView
-    private lateinit var tabSticks: TextView
+    private lateinit var tabSticksSize: TextView
+    private lateinit var tabSticksAppearance: TextView
+    private lateinit var tabSticksCurve: TextView
     private lateinit var viewPager: ViewPager2
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -27,14 +29,18 @@ class SettingsActivity : AppCompatActivity() {
         toolbar.setNavigationOnClickListener { finish() }
 
         tabConnection = findViewById(R.id.tabConnection)
-        tabSticks = findViewById(R.id.tabSticks)
+        tabSticksSize = findViewById(R.id.tabSticksSize)
+        tabSticksAppearance = findViewById(R.id.tabSticksAppearance)
+        tabSticksCurve = findViewById(R.id.tabSticksCurve)
         viewPager = findViewById(R.id.viewPager)
 
         viewPager.adapter = SettingsPagerAdapter(this)
         viewPager.isUserInputEnabled = false // Optional: disable swiping if desired
 
         tabConnection.setOnClickListener { viewPager.currentItem = 0 }
-        tabSticks.setOnClickListener { viewPager.currentItem = 1 }
+        tabSticksSize.setOnClickListener { viewPager.currentItem = 1 }
+        tabSticksAppearance.setOnClickListener { viewPager.currentItem = 2 }
+        tabSticksCurve.setOnClickListener { viewPager.currentItem = 3 }
 
         viewPager.registerOnPageChangeCallback(object : ViewPager2.OnPageChangeCallback() {
             override fun onPageSelected(position: Int) {
@@ -46,8 +52,13 @@ class SettingsActivity : AppCompatActivity() {
     }
 
     private fun updateTabs(position: Int) {
-        tabConnection.setTextColor(if (position == 0) Color.parseColor("#FF5C8D") else Color.parseColor("#AAAAAA"))
-        tabSticks.setTextColor(if (position == 1) Color.parseColor("#FF5C8D") else Color.parseColor("#AAAAAA"))
+        val activeColor = Color.parseColor("#FF5C8D")
+        val inactiveColor = Color.parseColor("#AAAAAA")
+
+        tabConnection.setTextColor(if (position == 0) activeColor else inactiveColor)
+        tabSticksSize.setTextColor(if (position == 1) activeColor else inactiveColor)
+        tabSticksAppearance.setTextColor(if (position == 2) activeColor else inactiveColor)
+        tabSticksCurve.setTextColor(if (position == 3) activeColor else inactiveColor)
     }
 
     private fun hideSystemUI() {

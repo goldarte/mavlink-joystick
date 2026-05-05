@@ -5,12 +5,14 @@ import androidx.fragment.app.FragmentActivity
 import androidx.viewpager2.adapter.FragmentStateAdapter
 
 class SettingsPagerAdapter(activity: FragmentActivity) : FragmentStateAdapter(activity) {
-    override fun getItemCount(): Int = 2
+    override fun getItemCount(): Int = 4
 
     override fun createFragment(position: Int): Fragment {
         return when (position) {
             0 -> ConnectionSettingsFragment()
-            1 -> StickSettingsFragment()
+            1 -> StickSizeSettingsFragment()
+            2 -> StickAppearanceSettingsFragment()
+            3 -> StickCurveSettingsFragment()
             else -> throw IllegalArgumentException("Invalid position")
         }
     }

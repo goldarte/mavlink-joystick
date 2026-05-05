@@ -60,39 +60,6 @@
             android:progressTint="#FF5C8D"
             android:thumbTint="#FF5C8D" />
 
-        <CheckBox
-            android:id="@+id/cbShowCircularArea"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Show Circular Area"
-            android:textColor="#FFFFFF"
-            android:buttonTint="#FF5C8D"
-            android:fontFamily="monospace"
-            android:textSize="14sp"
-            android:layout_marginTop="24dp"/>
-
-        <CheckBox
-            android:id="@+id/cbShowSquareArea"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Show Square Boundaries"
-            android:textColor="#FFFFFF"
-            android:buttonTint="#FF5C8D"
-            android:fontFamily="monospace"
-            android:textSize="14sp"
-            android:layout_marginTop="8dp"/>
-
-        <CheckBox
-            android:id="@+id/cbShowCircleBoundaries"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Show Circle Boundaries"
-            android:textColor="#FFFFFF"
-            android:buttonTint="#FF5C8D"
-            android:fontFamily="monospace"
-            android:textSize="14sp"
-            android:layout_marginTop="8dp"/>
-
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
