@@ -23,6 +23,27 @@ class JoystickView @JvmOverloads constructor(
 ) : View(context, attrs, defStyle) {
 
     var isThrottleMode: Boolean = false
+    var showCircularArea: Boolean = true
+        set(value) {
+            field = value
+            invalidate()
+        }
+    var showSquareArea: Boolean = true
+        set(value) {
+            field = value
+            invalidate()
+        }
+    var showCircleBoundaries: Boolean = false
+        set(value) {
+            field = value
+            invalidate()
+        }
+    var stickSizeFactor: Float = 0.65f
+        set(value) {
+            field = value.coerceIn(0.25f, 1.0f)
+            updateDimensions(width, height)
+            invalidate()
+        }
     var onChanged: ((x: Float, y: Float) -> Unit)? = null
 
     // Output values
@@ -41,6 +62,11 @@ class JoystickView @JvmOverloads constructor(
     private val ringPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
         strokeWidth = 3f
+        color = Color.parseColor("#44FFFFFF")
+    }
+    private val ringBoldPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+        strokeWidth = 10f
         color = Color.parseColor("#44FFFFFF")
     }
     private val ringFillPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -69,9 +95,14 @@ class JoystickView @JvmOverloads constructor(
 
     // ── Lifecycle ─────────────────────────────────────────────────────────────
     override fun onSizeChanged(w: Int, h: Int, ow: Int, oh: Int) {
+        updateDimensions(w, h)
+    }
+
+    private fun updateDimensions(w: Int, h: Int) {
+        if (w == 0 || h == 0) return
         cx = w / 2f
         cy = h / 2f
-        radius = (min(w, h) / 2f) * 0.88f
+        radius = (min(w, h) / 2f) * 0.88f * stickSizeFactor
         knobRadius = radius * 0.22f
         resetKnob()
         updateGradients()
@@ -94,19 +125,34 @@ class JoystickView @JvmOverloads constructor(
 
     // ── Draw ──────────────────────────────────────────────────────────────────
     override fun onDraw(canvas: Canvas) {
-        // Outer square fill
-        canvas.drawRect(cx - radius, cy - radius, cx + radius, cy + radius, ringFillPaint)
-        // Outer square border
-        canvas.drawRect(cx - radius, cy - radius, cx + radius, cy + radius, ringPaint)
+        ringPaint.alpha = 60
+        if (showSquareArea) {
+            // Outer square fill
+            canvas.drawRect(cx - radius, cy - radius, cx + radius, cy + radius, ringFillPaint)
+            // Outer square border
+            canvas.drawRect(cx - radius, cy - radius, cx + radius, cy + radius, ringPaint)
+            canvas.drawRect(cx - radius * 0.5f, cy - radius * 0.5f, cx + radius * 0.5f, cy + radius * 0.5f, ringPaint)
+        }
+
+        if (showCircularArea) {
+            val outerRadius = radius * sqrt(2.0).toFloat()
+            val outerOuterRadius = outerRadius*1.05.toFloat()
+            if (outerOuterRadius < min(cx, cy)) {
+                // Circular background (can be slightly more transparent or different if desired)
+                canvas.drawCircle(cx, cy, outerRadius, ringFillPaint)
+                canvas.drawCircle(cx, cy, outerOuterRadius, ringBoldPaint)
+            }
+        }
+
+        if (showCircleBoundaries) {
+            canvas.drawCircle(cx, cy, radius, ringFillPaint)
+            canvas.drawCircle(cx, cy, radius, ringPaint)
+            canvas.drawCircle(cx, cy, radius * 0.5f, ringPaint)
+        }
 
         // Cross hair
         canvas.drawLine(cx - radius, cy, cx + radius, cy, crossPaint)
         canvas.drawLine(cx, cy - radius, cx, cy + radius, crossPaint)
-
-        // Inner guidance square
-        ringPaint.alpha = 60
-        canvas.drawRect(cx - radius * 0.5f, cy - radius * 0.5f, cx + radius * 0.5f, cy + radius * 0.5f, ringPaint)
-        ringPaint.alpha = 0xFF
 
         // Glow
         updateGradients()

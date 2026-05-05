@@ -147,7 +147,7 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent" />
 
-        <!-- Bottom bar: connect + link status -->
+        <!-- Bottom bar: link status + settings -->
         <LinearLayout
             android:id="@+id/bottomBar"
             android:layout_width="match_parent"
@@ -159,19 +159,6 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent">
 
-            <Button
-                android:id="@+id/btnConnect"
-                style="@style/Widget.AppCompat.Button.Borderless"
-                android:layout_width="wrap_content"
-                android:layout_height="32dp"
-                android:text="⚙ LINK"
-                android:textColor="#AAAAAA"
-                android:textSize="10sp"
-                android:fontFamily="monospace"
-                android:paddingStart="0dp"
-                android:paddingEnd="6dp"
-                android:minWidth="0dp" />
-
             <TextView
                 android:id="@+id/tvConnectionStatus"
                 android:layout_width="0dp"
@@ -182,7 +169,21 @@
                 android:textSize="10sp"
                 android:fontFamily="monospace"
                 android:ellipsize="end"
-                android:singleLine="true" />
+                android:singleLine="true"
+                android:paddingStart="4dp" />
+
+            <Button
+                android:id="@+id/btnConnect"
+                style="@style/Widget.AppCompat.Button.Borderless"
+                android:layout_width="wrap_content"
+                android:layout_height="32dp"
+                android:text="⚙ SETTINGS"
+                android:textColor="#AAAAAA"
+                android:textSize="10sp"
+                android:fontFamily="monospace"
+                android:paddingStart="6dp"
+                android:paddingEnd="0dp"
+                android:minWidth="0dp" />
 
         </LinearLayout>
 

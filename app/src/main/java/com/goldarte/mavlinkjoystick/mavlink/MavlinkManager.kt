@@ -35,6 +35,8 @@ class MavlinkManager(
     var targetHost: String = "255.255.255.255",
     var targetPort: Int = 14550,
     var listenPort: Int = 14550,
+    var droneSystemId: Int = 1,
+    var droneComponentId: Int = 1,
     var systemId: Int = 255,      // GCS system ID
     var componentId: Int = 190    // GCS component ID
 ) {
@@ -48,9 +50,7 @@ class MavlinkManager(
     var onBatteryVoltageReceived: ((voltage: Float) -> Unit)? = null
     var onFlightModeReceived: ((mode: String) -> Unit)? = null
     var onAutopilotNameReceived: ((name: String) -> Unit)? = null
-    // ── Drone Discovery ──────────────────────────────────────────────────────
-    private var droneSystemId: Int = 1
-    private var droneComponentId: Int = 1
+    // ── Drone ID Logic ───────────────────────────────────────────────────────
     private var inited: Boolean = false
 
     // ── Manual Control (-1000..1000) ────────────────────────────────────────

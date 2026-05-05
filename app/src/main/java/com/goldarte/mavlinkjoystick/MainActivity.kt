@@ -1,6 +1,7 @@
 package com.goldarte.mavlinkjoystick
 
 import android.content.Context
+import android.content.Intent
 import android.graphics.Color
 import android.os.Bundle
 import android.view.View
@@ -8,7 +9,6 @@ import android.view.WindowManager
 import android.widget.Button
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
-import com.goldarte.mavlinkjoystick.ConnectionDialogFragment
 import com.goldarte.mavlinkjoystick.mavlink.MavlinkManager
 import com.goldarte.mavlinkjoystick.views.ArtificialHorizonView
 import com.goldarte.mavlinkjoystick.views.JoystickView
@@ -134,40 +134,64 @@ class MainActivity : AppCompatActivity() {
 
         // ── Connect button ───────────────────────────────────────────────────
         btnConnect.setOnClickListener {
-            ConnectionDialogFragment(
-                currentHost = mavlink.targetHost,
-                currentPort = mavlink.targetPort,
-                currentListenPort = mavlink.listenPort
-            ) { host, port, listenPort ->
-                mavlink.stop()
-                mavlink.targetHost = host
-                mavlink.targetPort = port
-                mavlink.listenPort = listenPort
-                saveSettings(host, port, listenPort)
-                mavlink.start()
-                tvConnectionStatus.text = "Connecting to $host:$port…"
-            }.show(supportFragmentManager, "connect")
+            startActivity(Intent(this, SettingsActivity::class.java))
         }
 
         updateUI(armed = false, connected = false)
         mavlink.start()
     }
 
-    private fun loadSettings() {
-        val prefs = getSharedPreferences("mavlink_prefs", Context.MODE_PRIVATE)
-        mavlink.targetHost = prefs.getString("target_host", "255.255.255.255") ?: "255.255.255.255"
-        mavlink.targetPort = prefs.getInt("target_port", 14550)
-        mavlink.listenPort = prefs.getInt("listen_port", 14550)
+    override fun onResume() {
+        super.onResume()
+        // Full-screen immersive (repeat on resume)
+        window.decorView.systemUiVisibility = (
+                View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+                        or View.SYSTEM_UI_FLAG_FULLSCREEN
+                        or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                        or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                        or View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                )
+        
+        val oldHost = mavlink.targetHost
+        val oldPort = mavlink.targetPort
+        val oldListen = mavlink.listenPort
+        val oldDroneSys = mavlink.droneSystemId
+        val oldDroneComp = mavlink.droneComponentId
+        
+        loadSettings()
+
+        // Re-start if connection settings changed
+        if (mavlink.targetHost != oldHost || mavlink.targetPort != oldPort || mavlink.listenPort != oldListen 
+            || mavlink.droneSystemId != oldDroneSys || mavlink.droneComponentId != oldDroneComp) {
+            mavlink.stop()
+            mavlink.start()
+        }
     }
 
-    private fun saveSettings(host: String, port: Int, listenPort: Int) {
+    private fun loadSettings() {
         val prefs = getSharedPreferences("mavlink_prefs", Context.MODE_PRIVATE)
-        prefs.edit().apply {
-            putString("target_host", host)
-            putInt("target_port", port)
-            putInt("listen_port", listenPort)
-            apply()
-        }
+        mavlink.targetHost = prefs.getString("host", "255.255.255.255") ?: "255.255.255.255"
+        mavlink.targetPort = prefs.getInt("port", 14550)
+        mavlink.listenPort = prefs.getInt("listen_port", 14550)
+        mavlink.droneSystemId = prefs.getInt("drone_system_id", 1)
+        mavlink.droneComponentId = prefs.getInt("drone_component_id", 1)
+        
+        val leftFactor = prefs.getFloat("left_stick_size_factor", 0.65f)
+        val rightFactor = prefs.getFloat("right_stick_size_factor", 0.65f)
+        leftStick.stickSizeFactor = leftFactor
+        rightStick.stickSizeFactor = rightFactor
+
+        val showCircular = prefs.getBoolean("show_circular_area", true)
+        leftStick.showCircularArea = showCircular
+        rightStick.showCircularArea = showCircular
+
+        val showSquare = prefs.getBoolean("show_square_area", true)
+        leftStick.showSquareArea = showSquare
+        rightStick.showSquareArea = showSquare
+
+        val showCircleBoundaries = prefs.getBoolean("show_circle_boundaries", false)
+        leftStick.showCircleBoundaries = showCircleBoundaries
+        rightStick.showCircleBoundaries = showCircleBoundaries
     }
 
     override fun onDestroy() {
