@@ -47,7 +47,7 @@ class MavlinkManager(
     var onAttitudeReceived: ((roll: Float, pitch: Float, yaw: Float) -> Unit)? = null
     var onBatteryVoltageReceived: ((voltage: Float) -> Unit)? = null
     var onFlightModeReceived: ((mode: String) -> Unit)? = null
-
+    var onAutopilotNameReceived: ((name: String) -> Unit)? = null
     // ── Drone Discovery ──────────────────────────────────────────────────────
     private var droneSystemId: Int = 1
     private var droneComponentId: Int = 1
@@ -72,6 +72,7 @@ class MavlinkManager(
     private var targetAddress: InetAddress? = null
     private var lastListenAddress: InetAddress? = null
     private var lastListenPort: Int = targetPort
+    private var autopilot_name: String = "---"
 
     private val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
     private val networkCallback = object : ConnectivityManager.NetworkCallback() {
@@ -339,6 +340,17 @@ class MavlinkManager(
         // Flight mode
         val modeName = getFlightModeName(heartbeat)
         onFlightModeReceived?.invoke(modeName)
+
+        val autopilot = heartbeat.autopilot().entry()
+        val current_autopilot_name = autopilot_name
+        if (autopilot == MavAutopilot.MAV_AUTOPILOT_ARDUPILOTMEGA) {
+            autopilot_name = "ArduPilot"
+        } else if (autopilot == MavAutopilot.MAV_AUTOPILOT_PX4) {
+            autopilot_name = "PX4"
+        } else {
+            autopilot_name = "Flix"
+        }
+        onAutopilotNameReceived?.invoke(autopilot_name)
 
         // Try raw bitwise check if flags() doesn't exist
         val nowArmed = (heartbeat.baseMode().value() and 0x80) != 0

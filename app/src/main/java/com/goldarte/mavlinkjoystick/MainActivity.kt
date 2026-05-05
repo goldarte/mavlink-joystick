@@ -23,6 +23,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var rightStick: JoystickView
     private lateinit var horizon: ArtificialHorizonView
     private lateinit var compass: CompassView
+    private lateinit var tvAutopilotName: TextView
     private lateinit var btnArm: Button
     private lateinit var tvStatus: TextView
     private lateinit var tvBattery: TextView
@@ -56,6 +57,7 @@ class MainActivity : AppCompatActivity() {
         rightStick           = findViewById(R.id.rightStick)
         horizon              = findViewById(R.id.artificialHorizon)
         compass              = findViewById(R.id.compass)
+        tvAutopilotName      = findViewById(R.id.tvAutopilotName)
         btnArm               = findViewById(R.id.btnArm)
         tvStatus             = findViewById(R.id.tvArmStatus)
         tvBattery            = findViewById(R.id.tvBattery)
@@ -104,6 +106,12 @@ class MainActivity : AppCompatActivity() {
         mavlink.onFlightModeReceived = { mode ->
             runOnUiThread {
                 tvFlightMode.text = mode
+            }
+        }
+
+        mavlink.onAutopilotNameReceived= { name ->
+            runOnUiThread {
+                tvAutopilotName.text = name
             }
         }
 
@@ -176,12 +184,12 @@ class MainActivity : AppCompatActivity() {
         if (armed) {
             btnArm.text = "DISARM"
             btnArm.setBackgroundColor(Color.parseColor("#D32F2F"))
-            tvStatus.text = "● ARMED"
+            tvStatus.text = "ARMED"
             tvStatus.setTextColor(Color.parseColor("#FF5252"))
         } else {
             btnArm.text = "ARM"
             btnArm.setBackgroundColor(Color.parseColor("#2E7D32"))
-            tvStatus.text = "○ DISARMED"
+            tvStatus.text = "DISARMED"
             tvStatus.setTextColor(Color.parseColor("#69F0AE"))
         }
 
