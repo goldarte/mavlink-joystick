@@ -105,7 +105,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         // ── MAVLink ──────────────────────────────────────────────────────────
-        mavlink = MavlinkManager(applicationContext)
+        mavlink = MavlinkManager.getInstance(applicationContext)
         loadSettings()
 
         mavlink.onStateChanged = { armed, connected ->

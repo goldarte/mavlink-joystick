@@ -30,16 +30,28 @@ import java.util.concurrent.atomic.AtomicBoolean
  *
  * Defaults: host=192.168.4.1 (ESP telemetry AP), port=14550 (GCS port).
  */
-class MavlinkManager(
-    private val context: Context,
-    var targetHost: String = "255.255.255.255",
-    var targetPort: Int = 14550,
-    var listenPort: Int = 14550,
-    var droneSystemId: Int = 1,
-    var droneComponentId: Int = 1,
-    var systemId: Int = 255,      // GCS system ID
-    var componentId: Int = 190    // GCS component ID
+class MavlinkManager internal constructor(
+    private val context: Context?
 ) {
+    var targetHost: String = "255.255.255.255"
+    var targetPort: Int = 14550
+    var listenPort: Int = 14550
+    var droneSystemId: Int = 1
+    var droneComponentId: Int = 1
+    var systemId: Int = 255      // GCS system ID
+    var componentId: Int = 190    // GCS component ID
+
+    companion object {
+        @Volatile
+        private var INSTANCE: MavlinkManager? = null
+
+        fun getInstance(context: Context): MavlinkManager {
+            return INSTANCE ?: synchronized(this) {
+                INSTANCE ?: MavlinkManager(context.applicationContext).also { INSTANCE = it }
+            }
+        }
+    }
+
     // ── State ────────────────────────────────────────────────────────────────
     var isArmed: Boolean = false
         private set
@@ -50,8 +62,10 @@ class MavlinkManager(
     var onBatteryVoltageReceived: ((voltage: Float) -> Unit)? = null
     var onFlightModeReceived: ((mode: String) -> Unit)? = null
     var onAutopilotNameReceived: ((name: String) -> Unit)? = null
+    var onStatustextReceived: ((text: String, severity: Int) -> Unit)? = null
+    var onSerialControlReceived: ((data: ByteArray) -> Unit)? = null
     // ── Drone ID Logic ───────────────────────────────────────────────────────
-    private var inited: Boolean = false
+    internal var inited: Boolean = false
 
     // ── Manual Control (-1000..1000) ────────────────────────────────────────
     private var stickX: Int = 0 // Roll
@@ -74,7 +88,7 @@ class MavlinkManager(
     private var lastListenPort: Int = targetPort
     private var autopilot_name: String = "---"
 
-    private val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+    private val connectivityManager = context?.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
     private val networkCallback = object : ConnectivityManager.NetworkCallback() {
         override fun onAvailable(network: Network) {
             Log.i("MavlinkManager", "Network available: resetting discovery (inited = false)")
@@ -99,10 +113,12 @@ class MavlinkManager(
         
         // Register for network changes
         try {
-            val request = NetworkRequest.Builder()
-                .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-                .build()
-            connectivityManager.registerNetworkCallback(request, networkCallback)
+            connectivityManager?.let { cm ->
+                val request = NetworkRequest.Builder()
+                    .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                    .build()
+                cm.registerNetworkCallback(request, networkCallback)
+            }
         } catch (e: Exception) {
             Log.e("MavlinkManager", "Failed to register network callback", e)
         }
@@ -135,7 +151,7 @@ class MavlinkManager(
         sendJob?.cancel()
         recvJob?.cancel()
         try {
-            connectivityManager.unregisterNetworkCallback(networkCallback)
+            connectivityManager?.unregisterNetworkCallback(networkCallback)
         } catch (e: Exception) {
             // Ignore if already unregistered
         }
@@ -162,6 +178,33 @@ class MavlinkManager(
                 .param1(if (arm) 1f else 0f)
                 .build()
             sendMavlinkMessage(command)
+        }
+    }
+
+    /** Send a command via SERIAL_CONTROL (msg #126) with DEV_SHELL flag. */
+    fun sendSerialControl(text: String) {
+        scope.launch {
+            val bytes = (text + "\n").toByteArray(Charsets.UTF_8)
+            
+            // SerialControl payload 'data' is 70 bytes.
+            var offset = 0
+            while (offset < bytes.size) {
+                val count = minOf(bytes.size - offset, 70)
+                val chunk = ByteArray(70)
+                System.arraycopy(bytes, offset, chunk, 0, count)
+                
+                val sc = SerialControl.builder()
+                    .device(SerialControlDev.SERIAL_CONTROL_DEV_SHELL)
+                    .flags(SerialControlFlag.SERIAL_CONTROL_FLAG_RESPOND)
+                    .timeout(0)
+                    .baudrate(0)
+                    .count(count)
+                    .data(chunk)
+                    .build()
+                
+                sendMavlinkMessage(sc)
+                offset += count
+            }
         }
     }
 
@@ -281,6 +324,15 @@ class MavlinkManager(
                             val volt = totalMv.toFloat() / 1000f
                             Log.v("MavlinkManager", "Battery: $volt V")
                             onBatteryVoltageReceived?.invoke(volt)
+                        }
+                        is Statustext -> {
+                            Log.i("MavlinkManager", "Statustext: ${payload.text()} (severity=${payload.severity().value()})")
+                            onStatustextReceived?.invoke(payload.text(), payload.severity().value())
+                        }
+                        is SerialControl -> {
+                            Log.v("MavlinkManager", "SerialControl: ${payload.count()} bytes")
+                            val data = payload.data().copyOfRange(0, payload.count())
+                            onSerialControlReceived?.invoke(data)
                         }
                     }
                 } catch (e: Exception) {

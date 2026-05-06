@@ -4,7 +4,8 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#0D0D0D">
+    android:background="#0D0D0D"
+    android:fitsSystemWindows="true">
 
     <androidx.appcompat.widget.Toolbar
         android:id="@+id/toolbar"
@@ -95,6 +96,19 @@
             android:text="↳ CURVE"
             android:textColor="#AAAAAA"
             android:textSize="11sp"
+            android:fontFamily="monospace"
+            android:clickable="true"
+            android:focusable="true"
+            android:background="?attr/selectableItemBackground" />
+
+        <TextView
+            android:id="@+id/tabMavlinkConsole"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:padding="16dp"
+            android:text="MAVLINK CONSOLE"
+            android:textColor="#AAAAAA"
+            android:textSize="12sp"
             android:fontFamily="monospace"
             android:clickable="true"
             android:focusable="true"

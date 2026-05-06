@@ -17,6 +17,9 @@ class SettingsActivity : AppCompatActivity() {
     private lateinit var tabSticksSize: TextView
     private lateinit var tabSticksAppearance: TextView
     private lateinit var tabSticksCurve: TextView
+    private lateinit var tabMavlinkConsole: TextView
+    private lateinit var sidebar: View
+    private lateinit var divider: View
     private lateinit var viewPager: ViewPager2
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -32,6 +35,9 @@ class SettingsActivity : AppCompatActivity() {
         tabSticksSize = findViewById(R.id.tabSticksSize)
         tabSticksAppearance = findViewById(R.id.tabSticksAppearance)
         tabSticksCurve = findViewById(R.id.tabSticksCurve)
+        tabMavlinkConsole = findViewById(R.id.tabMavlinkConsole)
+        sidebar = findViewById(R.id.sidebar)
+        divider = findViewById(R.id.divider)
         viewPager = findViewById(R.id.viewPager)
 
         viewPager.adapter = SettingsPagerAdapter(this)
@@ -41,6 +47,7 @@ class SettingsActivity : AppCompatActivity() {
         tabSticksSize.setOnClickListener { viewPager.currentItem = 1 }
         tabSticksAppearance.setOnClickListener { viewPager.currentItem = 2 }
         tabSticksCurve.setOnClickListener { viewPager.currentItem = 3 }
+        tabMavlinkConsole.setOnClickListener { viewPager.currentItem = 4 }
 
         viewPager.registerOnPageChangeCallback(object : ViewPager2.OnPageChangeCallback() {
             override fun onPageSelected(position: Int) {
@@ -48,7 +55,35 @@ class SettingsActivity : AppCompatActivity() {
             }
         })
 
+        updateLayoutForOrientation(resources.configuration.orientation)
         hideSystemUI()
+    }
+
+    override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
+        super.onConfigurationChanged(newConfig)
+        updateLayoutForOrientation(newConfig.orientation)
+    }
+
+    private fun updateLayoutForOrientation(orientation: Int) {
+        if (orientation == android.content.res.Configuration.ORIENTATION_PORTRAIT) {
+            sidebar.visibility = View.GONE
+            divider.visibility = View.GONE
+            showSystemUI()
+        } else {
+            sidebar.visibility = View.VISIBLE
+            divider.visibility = View.VISIBLE
+            hideSystemUI()
+        }
+    }
+
+    private fun showSystemUI() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            window.setDecorFitsSystemWindows(true)
+            window.insetsController?.show(WindowInsets.Type.statusBars() or WindowInsets.Type.navigationBars())
+        } else {
+            @Suppress("DEPRECATION")
+            window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_VISIBLE
+        }
     }
 
     private fun updateTabs(position: Int) {
@@ -59,6 +94,7 @@ class SettingsActivity : AppCompatActivity() {
         tabSticksSize.setTextColor(if (position == 1) activeColor else inactiveColor)
         tabSticksAppearance.setTextColor(if (position == 2) activeColor else inactiveColor)
         tabSticksCurve.setTextColor(if (position == 3) activeColor else inactiveColor)
+        tabMavlinkConsole.setTextColor(if (position == 4) activeColor else inactiveColor)
     }
 
     private fun hideSystemUI() {

@@ -34,8 +34,9 @@
         <activity
             android:name=".SettingsActivity"
             android:exported="false"
-            android:screenOrientation="landscape"
-            android:configChanges="orientation|screenSize|keyboardHidden" />
+            android:screenOrientation="userLandscape"
+            android:configChanges="orientation|screenSize|keyboardHidden"
+            android:windowSoftInputMode="adjustResize" />
 
     </application>
 
