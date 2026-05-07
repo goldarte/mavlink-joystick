@@ -403,10 +403,15 @@ class MavlinkManager internal constructor(
             autopilot_name = "ArduPilot"
         } else if (autopilot == MavAutopilot.MAV_AUTOPILOT_PX4) {
             autopilot_name = "PX4"
-        } else {
+        } else if (autopilot == MavAutopilot.MAV_AUTOPILOT_GENERIC){
             autopilot_name = "Flix"
+        } else {
+            autopilot_name = ""
         }
-        onAutopilotNameReceived?.invoke(autopilot_name)
+
+        if (current_autopilot_name != autopilot_name) {
+            onAutopilotNameReceived?.invoke(autopilot_name)
+        }
 
         // Try raw bitwise check if flags() doesn't exist
         val nowArmed = (heartbeat.baseMode().value() and 0x80) != 0
