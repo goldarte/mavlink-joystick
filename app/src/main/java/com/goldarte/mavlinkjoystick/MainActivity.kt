@@ -220,7 +220,7 @@ class MainActivity : AppCompatActivity() {
         leftStick.showCircleBoundaries = showCircleBoundaries
         rightStick.showCircleBoundaries = showCircleBoundaries
 
-        val knobColorStr = prefs.getString("knob_color", "#FF5C8D") ?: "#FF5C8D"
+        val knobColorStr = prefs.getString("knob_color", "#F44336") ?: "F44336"
         val knobColor = Color.parseColor(knobColorStr)
         leftStick.knobColor = knobColor
         rightStick.knobColor = knobColor
