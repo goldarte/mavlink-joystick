@@ -294,7 +294,6 @@ class MavlinkManager internal constructor(
                         lastListenAddress?.let { addr ->
                             if (addr is Inet4Address && addr.hostAddress != null) {
                                 droneSystemId = message.originSystemId
-                                droneComponentId = message.originComponentId
 
                                 Log.i(
                                     "MavlinkManager",
@@ -318,7 +317,8 @@ class MavlinkManager internal constructor(
                             }
                         }
                     }
-
+                    // check that message is received from target drone
+                    if (message.originSystemId != droneSystemId || message.originComponentId != droneComponentId) continue
                     Log.v("MavlinkManager", "Received: ${payload.javaClass.simpleName} from ${message.originSystemId}")
                     when (payload) {
                         is Heartbeat -> handleHeartbeat(payload)
