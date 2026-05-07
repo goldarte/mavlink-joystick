@@ -4,6 +4,7 @@
 
 package com.goldarte.mavlinkjoystick
 
+import android.content.Intent
 import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
@@ -14,6 +15,7 @@ import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.Toolbar
 import androidx.viewpager2.widget.ViewPager2
+import androidx.core.net.toUri
 
 class SettingsActivity : AppCompatActivity() {
 
@@ -25,6 +27,7 @@ class SettingsActivity : AppCompatActivity() {
     private lateinit var sidebar: View
     private lateinit var divider: View
     private lateinit var viewPager: ViewPager2
+    private lateinit var githubLink: TextView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -43,6 +46,7 @@ class SettingsActivity : AppCompatActivity() {
         sidebar = findViewById(R.id.sidebar)
         divider = findViewById(R.id.divider)
         viewPager = findViewById(R.id.viewPager)
+        githubLink = findViewById(R.id.githubLink)
 
         viewPager.adapter = SettingsPagerAdapter(this)
         viewPager.isUserInputEnabled = false // Optional: disable swiping if desired
@@ -52,6 +56,11 @@ class SettingsActivity : AppCompatActivity() {
         tabSticksAppearance.setOnClickListener { viewPager.currentItem = 2 }
         tabSticksCurve.setOnClickListener { viewPager.currentItem = 3 }
         tabMavlinkConsole.setOnClickListener { viewPager.currentItem = 4 }
+
+        githubLink.setOnClickListener {
+            val intent = Intent(Intent.ACTION_VIEW, getString(R.string.github_url).toUri())
+            startActivity(intent)
+        }
 
         viewPager.registerOnPageChangeCallback(object : ViewPager2.OnPageChangeCallback() {
             override fun onPageSelected(position: Int) {

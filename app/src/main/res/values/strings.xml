@@ -6,4 +6,7 @@
     <string name="disarmed">○ DISARMED</string>
     <string name="link">● LINK</string>
     <string name="no_link">○ NO LINK</string>
+    <string name="copyright">© 2026 Arthur Golubtsov</string>
+    <string name="source_code">SOURCE CODE</string>
+    <string name="github_url">https://github.com/goldarte/mavlink-joystick</string>
 </resources>
