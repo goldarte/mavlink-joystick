@@ -1,3 +1,7 @@
+// Copyright (c) 2026 Arthur Golubtsov <goldartt@gmail.com>
+// Repository: https://github.com/goldarte/mavlink-joystick
+// Assisted by Gemini
+
 package com.goldarte.mavlinkjoystick
 
 import android.content.pm.ActivityInfo

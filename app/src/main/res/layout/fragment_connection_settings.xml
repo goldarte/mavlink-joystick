@@ -1,4 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Copyright (c) 2026 Arthur Golubtsov <goldartt@gmail.com> -->
+<!-- Repository: https://github.com/goldarte/mavlink-joystick -->
+<!-- Assisted by Gemini -->
 <ScrollView
     xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
