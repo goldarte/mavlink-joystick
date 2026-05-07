@@ -110,7 +110,7 @@ class MavlinkConsoleFragment : Fragment() {
         val text = etCommand.text.toString().trim()
         if (text.isNotEmpty()) {
             mavlink.sendSerialControl(text)
-            appendRawText(">> $text\n")
+            appendRawText("> $text\n")
             etCommand.setText("")
         }
     }
