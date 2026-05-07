@@ -25,6 +25,7 @@ import java.net.DatagramSocket
 import java.net.InetAddress
 import java.net.Inet4Address
 import java.util.concurrent.atomic.AtomicBoolean
+import androidx.core.content.edit
 
 /**
  * Manages MAVLink communication over UDP.
@@ -302,6 +303,13 @@ class MavlinkManager internal constructor(
 
                                 targetHost = addr.hostAddress!!
                                 targetPort = lastListenPort
+
+                                val prefs = context?.getSharedPreferences("mavlink_prefs", Context.MODE_PRIVATE)!!
+                                prefs.edit(commit = true) {
+                                    putString("host", targetHost)
+                                    putInt("port", targetPort)
+                                    putInt("drone_system_id", droneSystemId)
+                                }
 
                                 updateTargetAddress()
                                 inited = true
