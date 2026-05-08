@@ -43,6 +43,7 @@ class MavlinkManager internal constructor(
     var listenPort: Int = 14550
     var droneSystemId: Int = 1
     var droneComponentId: Int = 1
+    var autoDetect: Boolean = true
     var systemId: Int = 255      // GCS system ID
     var componentId: Int = 190    // GCS component ID
 
@@ -130,6 +131,9 @@ class MavlinkManager internal constructor(
 
         scope.launch {
             updateTargetAddress()
+            if (!autoDetect) {
+                inited = true
+            }
             try {
                 // Bind to listenPort. If fails (e.g. port taken by QGC), bind to any available port
                 socket = try {
@@ -290,7 +294,7 @@ class MavlinkManager internal constructor(
                     val payload = message.payload
 
                     // Discovery logic: Update drone ID and target host if we see a heartbeat
-                    if (!inited && payload is Heartbeat) {
+                    if (autoDetect && !inited && payload is Heartbeat) {
                         lastListenAddress?.let { addr ->
                             if (addr is Inet4Address && addr.hostAddress != null) {
                                 droneSystemId = message.originSystemId
@@ -423,7 +427,7 @@ class MavlinkManager internal constructor(
 
         // Try raw bitwise check if flags() doesn't exist
         val nowArmed = (heartbeat.baseMode().value() and 0x80) != 0
-        if (nowArmed != isArmed || !beforeConnected) {
+        if (nowArmed != isArmed || beforeConnected != isConnected) {
             isArmed = nowArmed
             onStateChanged?.invoke(isArmed, isConnected)
         }

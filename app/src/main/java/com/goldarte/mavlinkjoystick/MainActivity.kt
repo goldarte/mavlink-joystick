@@ -184,12 +184,13 @@ class MainActivity : AppCompatActivity() {
         val oldListen = mavlink.listenPort
         val oldDroneSys = mavlink.droneSystemId
         val oldDroneComp = mavlink.droneComponentId
+        val oldAutoDetect = mavlink.autoDetect
         
         loadSettings()
 
         // Re-start if connection settings changed
         if (mavlink.targetHost != oldHost || mavlink.targetPort != oldPort || mavlink.listenPort != oldListen 
-            || mavlink.droneSystemId != oldDroneSys || mavlink.droneComponentId != oldDroneComp) {
+            || mavlink.droneSystemId != oldDroneSys || mavlink.droneComponentId != oldDroneComp || mavlink.autoDetect != oldAutoDetect) {
             mavlink.stop()
             mavlink.start()
         }
@@ -202,6 +203,7 @@ class MainActivity : AppCompatActivity() {
         mavlink.listenPort = prefs.getInt("listen_port", 14550)
         mavlink.droneSystemId = prefs.getInt("drone_system_id", 1)
         mavlink.droneComponentId = prefs.getInt("drone_component_id", 1)
+        mavlink.autoDetect = prefs.getBoolean("auto_detect", true)
         
         val leftFactor = prefs.getFloat("left_stick_size_factor", 0.65f)
         val rightFactor = prefs.getFloat("right_stick_size_factor", 0.65f)
