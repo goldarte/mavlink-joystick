@@ -1,6 +1,6 @@
 package com.eugenehammer.mavlinkjoystikkmp.mavlink
 
-expect class MavlinkManager() {
+expect class MavlinkManager {
 
     fun start()
 

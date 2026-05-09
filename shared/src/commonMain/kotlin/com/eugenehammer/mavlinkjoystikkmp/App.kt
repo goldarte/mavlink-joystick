@@ -10,6 +10,7 @@ import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
 import androidx.savedstate.serialization.SavedStateConfiguration
+import com.eugenehammer.mavlinkjoystikkmp.di.platformModule
 import com.eugenehammer.mavlinkjoystikkmp.di.sharedModule
 import com.eugenehammer.mavlinkjoystikkmp.ui.flight.compose.FlightScreen
 import com.eugenehammer.mavlinkjoystikkmp.ui.settings.SettingsScreen
@@ -38,7 +39,7 @@ private val config = SavedStateConfiguration {
 @Preview
 fun App() {
     KoinApplication(
-        configuration = koinConfiguration(declaration = { modules(sharedModule) }),
+        configuration = koinConfiguration(declaration = { modules(sharedModule, platformModule) }),
         content = {
             MaterialTheme {
                 val backStack = rememberNavBackStack(config, Flight)
