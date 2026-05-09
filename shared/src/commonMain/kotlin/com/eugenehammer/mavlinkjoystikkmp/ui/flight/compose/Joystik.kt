@@ -1,4 +1,4 @@
-package com.eugenehammer.mavlinkjoystikkmp.ui
+package com.eugenehammer.mavlinkjoystikkmp.ui.flight.compose
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectDragGestures
