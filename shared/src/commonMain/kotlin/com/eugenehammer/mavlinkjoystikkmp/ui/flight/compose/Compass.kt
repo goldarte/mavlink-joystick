@@ -23,7 +23,7 @@ import kotlin.math.min
 import kotlin.math.sin
 
 @Composable
-internal fun CompassView(
+internal fun Compass(
     modifier: Modifier = Modifier,
     heading: Float = 0f
 ) {

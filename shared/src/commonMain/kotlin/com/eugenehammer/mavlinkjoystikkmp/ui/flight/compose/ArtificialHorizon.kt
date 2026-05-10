@@ -36,7 +36,7 @@ import kotlin.math.sin
  *  -90..90
  */
 @Composable
-internal fun ArtificialHorizonView(
+internal fun ArtificialHorizon(
     modifier: Modifier = Modifier,
     rollDeg: Float = 0f,
     pitchDeg: Float = 0f,

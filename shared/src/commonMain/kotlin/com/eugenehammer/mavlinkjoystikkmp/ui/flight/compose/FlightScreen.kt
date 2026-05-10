@@ -1,6 +1,7 @@
 package com.eugenehammer.mavlinkjoystikkmp.ui.flight.compose
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,266 +13,299 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.text.BasicText
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Scaffold
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.unit.TextUnit
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import com.eugenehammer.mavlinkjoystikkmp.ui.flight.FlightViewModel
 import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
-internal fun FlightScreen(
+fun FlightScreen(
     modifier: Modifier = Modifier,
-    autopilotName: String = "---",
-    armStatus: String = "DISARMED",
-    battery: String = "--.-V",
-    flightMode: String = "---",
-    connectionStatus: String = "○ NO LINK",
-    isArmed: Boolean = false,
-    onArmClick: () -> Unit = {},
-    onSettingsClick: () -> Unit = {},
+    onOpenSettings: () -> Unit,
     vm: FlightViewModel = koinViewModel()
 ) {
-    Scaffold { paddingValues ->
-        Row(
-            modifier = modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .background(Color(0xFF0D0D0D))
-                .padding(6.dp)
+    val state by vm.uiState.collectAsState()
+
+    Row(
+        modifier = modifier
+            .fillMaxSize()
+            .background(Color(0xFF0D0D0D))
+            .systemBarsPadding()
+            .padding(6.dp)
+    ) {
+
+        // ══════════════ LEFT STICK ══════════════
+
+        Box(
+            modifier = Modifier
+                .weight(0.355f)
+                .fillMaxHeight()
         ) {
 
-            // ══════════════ LEFT STICK ══════════════
-            Box(
+            Joystick(
+                modifier = Modifier.fillMaxSize(),
+                isThrottleMode = true,
+                onChanged = vm::onLeftStickChanged,
+            )
+
+            Row(
                 modifier = Modifier
-                    .weight(0.355f)
-                    .fillMaxHeight()
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .padding(bottom = 4.dp)
             ) {
-                Joystick(
-                    modifier = Modifier.fillMaxSize()
+
+                Text(
+                    text = "YAW ←→",
+                    modifier = Modifier.weight(1f),
+                    textAlign = TextAlign.Center,
+                    color = Color.White.copy(alpha = 0.27f),
+                    fontSize = 10.sp,
+                    fontFamily = FontFamily.Monospace,
                 )
 
-                StickLabels(
-                    left = "YAW ←→",
-                    right = "↑ THR ↓",
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .padding(bottom = 4.dp)
+                Text(
+                    text = "↑ THR ↓",
+                    modifier = Modifier.weight(1f),
+                    textAlign = TextAlign.Center,
+                    color = Color.White.copy(alpha = 0.27f),
+                    fontSize = 10.sp,
+                    fontFamily = FontFamily.Monospace,
                 )
             }
+        }
 
-            Spacer(Modifier.width(6.dp))
+        Spacer(Modifier.width(6.dp))
 
-            // ══════════════ CENTER PANEL ══════════════
-            Column(
+        // ══════════════ CENTER PANEL ══════════════
+
+        Column(
+            modifier = Modifier
+                .weight(0.278f)
+                .fillMaxHeight()
+        ) {
+
+            // ───── Instruments ─────
+
+            Row(
                 modifier = Modifier
-                    .weight(0.278f)
-                    .fillMaxHeight()
-                    .padding(horizontal = 2.dp),
+                    .weight(1f)
+                    .fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
 
-                // Instruments
-                Row(
+                ArtificialHorizon(
                     modifier = Modifier
                         .weight(1f)
-                        .fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-
-                    ArtificialHorizonView(
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxHeight()
-                    )
-
-                    CompassView(
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxHeight()
-                    )
-                }
-
-                // Autopilot name
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 3.dp, bottom = 20.dp),
-                    horizontalArrangement = Arrangement.Center
-                ) {
-                    MonoText(
-                        text = autopilotName,
-                        color = Color(0xFFAAAAAA),
-                        fontSize = 12.sp,
-                        modifier = Modifier.padding(start = 10.dp)
-                    )
-                }
-
-                // Status row
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 3.dp, bottom = 2.dp),
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-
-                    MonoText(
-                        text = armStatus,
-                        color = Color(0xFF69F0AE),
-                        fontSize = 12.sp,
-                        modifier = Modifier.padding(end = 10.dp)
-                    )
-
-                    MonoText(
-                        text = battery,
-                        color = Color(0xFFAAAAAA),
-                        fontSize = 12.sp
-                    )
-
-                    MonoText(
-                        text = flightMode,
-                        color = Color(0xFFAAAAAA),
-                        fontSize = 12.sp,
-                        modifier = Modifier.padding(start = 10.dp)
-                    )
-                }
-
-                // ARM / DISARM button
-                Button(
-                    onClick = onArmClick,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(42.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = if (isArmed) {
-                            Color(0xFFC62828)
-                        } else {
-                            Color(0xFF2E7D32)
-                        }
-                    )
-                ) {
-                    Text(
-                        text = if (isArmed) "DISARM" else "ARM",
-                        color = Color.White,
-                        fontSize = 14.sp,
-                        fontFamily = FontFamily.Monospace,
-                        letterSpacing = 0.15.sp
-                    )
-                }
-
-                // Bottom bar
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 2.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-
-                    MonoText(
-                        text = connectionStatus,
-                        color = Color(0xFFFF5252),
-                        fontSize = 10.sp,
-                        modifier = Modifier
-                            .weight(1f)
-                            .padding(start = 4.dp)
-                    )
-
-                    TextButton(
-                        onClick = onSettingsClick,
-                        modifier = Modifier.height(32.dp),
-                        contentPadding = PaddingValues(
-                            start = 6.dp,
-                            end = 0.dp
-                        )
-                    ) {
-                        Text(
-                            text = "⚙ SETTINGS",
-                            color = Color(0xFFAAAAAA),
-                            fontSize = 10.sp,
-                            fontFamily = FontFamily.Monospace
-                        )
-                    }
-                }
-            }
-
-            Spacer(Modifier.width(6.dp))
-
-            // ══════════════ RIGHT STICK ══════════════
-            Box(
-                modifier = Modifier
-                    .weight(0.355f)
-                    .fillMaxHeight()
-            ) {
-                Joystick(
-                    modifier = Modifier.fillMaxSize()
+                        .fillMaxHeight(),
+                    rollDeg = state.rollDeg,
+                    pitchDeg = state.pitchDeg,
                 )
 
-                StickLabels(
-                    left = "ROLL ←→",
-                    right = "↑ PITCH ↓",
+                Compass(
                     modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .padding(bottom = 4.dp)
+                        .weight(1f)
+                        .fillMaxHeight(),
+                    heading = state.yawHeading,
+                )
+            }
+
+            // ───── Autopilot name ─────
+
+            Text(
+                text = state.autopilotName,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 3.dp, bottom = 20.dp),
+                textAlign = TextAlign.Center,
+                color = Color(0xFFAAAAAA),
+                fontSize = 12.sp,
+                fontFamily = FontFamily.Monospace,
+                letterSpacing = 0.04.em,
+            )
+
+            // ───── Status row ─────
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 3.dp, bottom = 2.dp),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+
+                Text(
+                    text = if (state.armed) {
+                        "ARMED"
+                    } else {
+                        "DISARMED"
+                    },
+                    color = if (state.armed) {
+                        Color(0xFFFF5252)
+                    } else {
+                        Color(0xFF69F0AE)
+                    },
+                    fontSize = 12.sp,
+                    fontFamily = FontFamily.Monospace,
+                    letterSpacing = 0.04.em,
+                )
+
+                Spacer(Modifier.width(10.dp))
+
+                Text(
+                    text = state.batteryVoltage,
+                    color = Color(0xFFAAAAAA),
+                    fontSize = 12.sp,
+                    fontFamily = FontFamily.Monospace,
+                    letterSpacing = 0.04.em,
+                )
+
+                Spacer(Modifier.width(10.dp))
+
+                Text(
+                    text = state.flightMode,
+                    color = Color(0xFFAAAAAA),
+                    fontSize = 12.sp,
+                    fontFamily = FontFamily.Monospace,
+                    letterSpacing = 0.04.em,
+                )
+            }
+
+            // ───── ARM button ─────
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(42.dp)
+                    .combinedClickable(
+                        onClick = vm::onArmClick,
+                        onLongClick = vm::onArmLongClick,
+                    )
+                    .background(
+                        color = if (state.armed) {
+                            Color(0xFFD32F2F)
+                        } else {
+                            Color(0xFF2E7D32)
+                        },
+                        shape = RoundedCornerShape(6.dp),
+                    ),
+                contentAlignment = Alignment.Center,
+            ) {
+
+                Text(
+                    text = if (state.armed) {
+                        "DISARM"
+                    } else {
+                        "ARM"
+                    },
+                    color = Color.White,
+                    fontSize = 14.sp,
+                    fontFamily = FontFamily.Monospace,
+                    letterSpacing = 0.15.em,
+                    fontWeight = FontWeight.Medium,
+                )
+            }
+
+            Spacer(Modifier.height(4.dp))
+
+            // ───── Bottom bar ─────
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+
+                Text(
+                    text = if (state.connected) {
+                        "● ${state.connectionStatus}"
+                    } else {
+                        "○ NO LINK"
+                    },
+                    modifier = Modifier.weight(1f),
+                    color = if (state.connected) {
+                        Color(0xFF69F0AE)
+                    } else {
+                        Color(0xFFFF5252)
+                    },
+                    fontSize = 10.sp,
+                    fontFamily = FontFamily.Monospace,
+                    maxLines = 1,
+                )
+
+                TextButton(
+                    onClick = onOpenSettings,
+                    contentPadding = PaddingValues(
+                        horizontal = 6.dp,
+                        vertical = 0.dp,
+                    ),
+                ) {
+
+                    Text(
+                        text = "⚙ SETTINGS",
+                        color = Color(0xFFAAAAAA),
+                        fontSize = 10.sp,
+                        fontFamily = FontFamily.Monospace,
+                    )
+                }
+            }
+        }
+
+        Spacer(Modifier.width(6.dp))
+
+        // ══════════════ RIGHT STICK ══════════════
+
+        Box(
+            modifier = Modifier
+                .weight(0.355f)
+                .fillMaxHeight()
+        ) {
+
+            Joystick(
+                modifier = Modifier.fillMaxSize(),
+                isThrottleMode = false,
+                onChanged = vm::onRightStickChanged,
+            )
+
+            Row(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .padding(bottom = 4.dp)
+            ) {
+
+                Text(
+                    text = "ROLL ←→",
+                    modifier = Modifier.weight(1f),
+                    textAlign = TextAlign.Center,
+                    color = Color.White.copy(alpha = 0.27f),
+                    fontSize = 10.sp,
+                    fontFamily = FontFamily.Monospace,
+                )
+
+                Text(
+                    text = "↑ PITCH ↓",
+                    modifier = Modifier.weight(1f),
+                    textAlign = TextAlign.Center,
+                    color = Color.White.copy(alpha = 0.27f),
+                    fontSize = 10.sp,
+                    fontFamily = FontFamily.Monospace,
                 )
             }
         }
     }
-}
-
-@Composable
-private fun StickLabels(
-    left: String,
-    right: String,
-    modifier: Modifier = Modifier
-) {
-    Row(
-        modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.Center
-    ) {
-
-        MonoText(
-            text = left,
-            color = Color(0x44FFFFFF),
-            fontSize = 10.sp,
-            modifier = Modifier.weight(1f)
-        )
-
-        MonoText(
-            text = right,
-            color = Color(0x44FFFFFF),
-            fontSize = 10.sp,
-            modifier = Modifier.weight(1f)
-        )
-    }
-}
-
-@Composable
-private fun MonoText(
-    text: String,
-    color: Color,
-    fontSize: TextUnit,
-    modifier: Modifier = Modifier
-) {
-    BasicText(
-        text = text,
-        modifier = modifier,
-        style = TextStyle(
-            color = color,
-            fontSize = fontSize,
-            fontFamily = FontFamily.Monospace,
-            letterSpacing = 0.04.sp
-        )
-    )
 }

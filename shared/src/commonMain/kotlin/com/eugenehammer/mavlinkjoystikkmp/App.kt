@@ -45,10 +45,14 @@ fun App() {
                 val backStack = rememberNavBackStack(config, Flight)
                 val entryProvider = entryProvider {
                     entry<Flight> {
-                        FlightScreen()
+                        FlightScreen(onOpenSettings = {
+                            backStack.add(Settings)
+                        })
                     }
                     entry<Settings> {
-                        SettingsScreen()
+                        SettingsScreen(goBack = {
+                            backStack.removeFirstOrNull()
+                        })
                     }
                 }
 

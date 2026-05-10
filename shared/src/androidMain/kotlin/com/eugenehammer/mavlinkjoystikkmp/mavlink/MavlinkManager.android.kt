@@ -6,7 +6,6 @@ import android.net.Network
 import android.net.NetworkCapabilities
 import android.net.NetworkRequest
 import android.util.Log
-import androidx.core.content.edit
 import io.dronefleet.mavlink.MavlinkConnection
 import io.dronefleet.mavlink.common.Attitude
 import io.dronefleet.mavlink.common.AttitudeQuaternion
@@ -25,529 +24,1196 @@ import io.dronefleet.mavlink.minimal.MavState
 import io.dronefleet.mavlink.minimal.MavType
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
+import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.io.InputStream
 import java.net.DatagramPacket
 import java.net.DatagramSocket
 import java.net.Inet4Address
 import java.net.InetAddress
-import java.util.concurrent.atomic.AtomicBoolean
+import kotlin.math.asin
+import kotlin.math.atan2
 
-actual class MavlinkManager(private val context: Context) {
-    var targetHost: String = "255.255.255.255"
-    var targetPort: Int = 14550
-    var listenPort: Int = 14550
-    var droneSystemId: Int = 1
-    var droneComponentId: Int = 1
-    var autoDetect: Boolean = true
-    var systemId: Int = 255      // GCS system ID
-    var componentId: Int = 190    // GCS component ID
+class AndroidMavlinkClient(context: Context) : MavlinkManager {
 
-    // ── State ────────────────────────────────────────────────────────────────
-    var isArmed: Boolean = false
-        private set
-    var isConnected: Boolean = false
-        private set
-    var onStateChanged: ((armed: Boolean, connected: Boolean) -> Unit)? = null
-    var onAttitudeReceived: ((roll: Float, pitch: Float, yaw: Float) -> Unit)? = null
-    var onBatteryVoltageReceived: ((voltage: Float) -> Unit)? = null
-    var onFlightModeReceived: ((mode: String) -> Unit)? = null
-    var onAutopilotNameReceived: ((name: String) -> Unit)? = null
-    var onStatustextReceived: ((text: String, severity: Int) -> Unit)? = null
-    var onSerialControlReceived: ((data: ByteArray) -> Unit)? = null
-
-    // ── Drone ID Logic ───────────────────────────────────────────────────────
-    internal var inited: Boolean = false
-
-    // ── Manual Control (-1000..1000) ────────────────────────────────────────
-    private var stickX: Int = 0 // Roll
-    private var stickY: Int = 0 // Pitch
-    private var stickZ: Int = 0 // Throttle (0..1000 or -1000..1000)
-    private var stickR: Int = 0 // Yaw
-
-    // ── Internals ────────────────────────────────────────────────────────────
-    private val running = AtomicBoolean(false)
-    private var socket: DatagramSocket? = null
-    private var sendJob: Job? = null
-    private var recvJob: Job? = null
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
-    private var lastHeartbeat: Long = 0L
-    private val HEARTBEAT_TIMEOUT_MS = 3000L
+    private val _state =
+
+        MutableStateFlow(
+
+            MavlinkState(),
+
+            )
+
+    override val state: StateFlow<MavlinkState> =
+
+        _state.asStateFlow()
+
+    private val _events =
+
+        MutableSharedFlow<MavlinkEvent>()
+
+    override val events: SharedFlow<MavlinkEvent> =
+
+        _events.asSharedFlow()
+
+    private var config =
+
+        MavlinkConfig(
+
+            targetHost = "255.255.255.255",
+
+            targetPort = 14550,
+
+            listenPort = 14550,
+
+            droneSystemId = 1,
+
+            droneComponentId = 1,
+
+            autoDetect = true,
+
+            )
+
+    private var socket: DatagramSocket? = null
+
+    private var sendJob: kotlinx.coroutines.Job? = null
+
+    private var receiveJob: kotlinx.coroutines.Job? = null
 
     private var targetAddress: InetAddress? = null
+
+    private var lastHeartbeat = 0L
+
+    private val heartbeatTimeoutMs = 3000L
+
+    private var inited = false
+
+    private var stickX = 0
+
+    private var stickY = 0
+
+    private var stickZ = 0
+
+    private var stickR = 0
+
     private var lastListenAddress: InetAddress? = null
-    private var lastListenPort: Int = targetPort
-    private var autopilot_name: String = "---"
+
+    private var lastListenPort: Int = 14550
+
+    private var autopilotName = "---"
 
     private val connectivityManager =
-        context?.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
-    private val networkCallback = object : ConnectivityManager.NetworkCallback() {
-        override fun onAvailable(network: Network) {
-            Log.i("MavlinkManager", "Network available: resetting discovery (inited = false)")
-            inited = false
-            isConnected = false
-            onStateChanged?.invoke(isArmed, isConnected)
-        }
 
-        override fun onLost(network: Network) {
-            Log.i("MavlinkManager", "Network lost: resetting discovery (inited = false)")
-            inited = false
-            isConnected = false
-            onStateChanged?.invoke(isArmed, isConnected)
-        }
-    }
+        context.getSystemService(
 
-    // ── Public API ───────────────────────────────────────────────────────────
+            Context.CONNECTIVITY_SERVICE,
 
-    actual fun start() {
-        if (running.getAndSet(true)) return
-        Log.d(
-            "MavlinkManager",
-            "Starting MAVLink Manager. Target: $targetHost:$targetPort, Listen: $listenPort"
-        )
+            ) as ConnectivityManager
 
-        // Register for network changes
-        try {
-            connectivityManager?.let { cm ->
-                val request = NetworkRequest.Builder()
-                    .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-                    .build()
-                cm.registerNetworkCallback(request, networkCallback)
+    private val networkCallback =
+
+        object : ConnectivityManager.NetworkCallback() {
+
+            override fun onAvailable(network: Network) {
+
+                inited = false
+
+                _state.update {
+
+                    it.copy(
+
+                        connected = false,
+
+                        )
+
+                }
+
             }
-        } catch (e: Exception) {
-            Log.e("MavlinkManager", "Failed to register network callback", e)
+
+            override fun onLost(network: Network) {
+
+                inited = false
+
+                _state.update {
+
+                    it.copy(
+
+                        connected = false,
+
+                        )
+
+                }
+
+            }
+
         }
 
-        scope.launch {
-            updateTargetAddress()
-            if (!autoDetect) {
-                inited = true
-            }
+    override suspend fun start() {
+
+        updateTargetAddress()
+
+        if (!config.autoDetect) {
+
+            inited = true
+
+        }
+
+        registerConnectivity()
+
+        socket =
+
             try {
-                // Bind to listenPort. If fails (e.g. port taken by QGC), bind to any available port
-                socket = try {
-                    DatagramSocket(listenPort).also {
-                        Log.d("MavlinkManager", "Bound to port ${it.localPort}")
-                    }
-                } catch (e: Exception) {
-                    Log.w("MavlinkManager", "Failed to bind to $listenPort, using ephemeral port")
-                    DatagramSocket()
-                }
-                socket?.soTimeout = 500
-            } catch (e: Exception) {
-                Log.e("MavlinkManager", "Critical error opening socket", e)
-                running.set(false)
-                return@launch
+
+                DatagramSocket(
+
+                    config.listenPort,
+
+                    )
+
+            } catch (_: Exception) {
+
+                DatagramSocket()
+
             }
-            startSendLoop()
-            startReceiveLoop()
-        }
+
+        socket?.soTimeout = 500
+
+        sendJob =
+
+            scope.launch {
+
+                sendLoop()
+
+            }
+
+        receiveJob =
+
+            scope.launch {
+
+                receiveLoop()
+
+            }
+
     }
 
-    actual fun stop() {
-        running.set(false)
-        sendJob?.cancel()
-        recvJob?.cancel()
-        try {
-            connectivityManager?.unregisterNetworkCallback(networkCallback)
-        } catch (e: Exception) {
-            // Ignore if already unregistered
-        }
+    override suspend fun stop() {
+
+        sendJob?.cancelAndJoin()
+
+        receiveJob?.cancelAndJoin()
+
+        unregisterConnectivity()
+
         socket?.close()
+
         socket = null
+
         inited = false
+
     }
 
-    /** Update control values. All inputs are -1.0..1.0 (throttle 0..1). */
-    actual fun setChannels(roll: Float, pitch: Float, throttle: Float, yaw: Float) {
+    override suspend fun updateConfig(
+
+        config: MavlinkConfig,
+
+        ) {
+
+        this.config = config
+
+        updateTargetAddress()
+
+        _state.update {
+
+            it.copy(
+
+                targetHost = config.targetHost,
+
+                targetPort = config.targetPort,
+
+                )
+
+        }
+
+    }
+
+    override suspend fun setChannels(
+
+        roll: Float,
+
+        pitch: Float,
+
+        throttle: Float,
+
+        yaw: Float,
+
+        ) {
+
         stickX = axisToManual(roll)
-        stickY = axisToManual(-pitch) // Invert: forward stick = positive pitch
+
+        stickY = axisToManual(-pitch)
+
         stickZ = throttleToManual(throttle)
+
         stickR = axisToManual(yaw)
+
     }
 
-    /** Send MAV_CMD_COMPONENT_ARM_DISARM (400). */
-    actual fun sendArmCommand(arm: Boolean) {
-        scope.launch {
-            val command = CommandLong.builder()
-                .targetSystem(droneSystemId)
-                .targetComponent(droneComponentId)
+    override suspend fun arm() {
+
+        sendMavlinkMessage(
+
+            CommandLong.builder()
+
+                .targetSystem(config.droneSystemId)
+
+                .targetComponent(config.droneComponentId)
+
                 .command(MavCmd.MAV_CMD_COMPONENT_ARM_DISARM)
-                .param1(if (arm) 1f else 0f)
-                .build()
-            sendMavlinkMessage(command)
-        }
+
+                .param1(1f)
+
+                .build(),
+
+            )
+
     }
 
-    /** Send a command via SERIAL_CONTROL (msg #126) with DEV_SHELL flag. */
-    actual fun sendSerialControl(text: String) {
-        scope.launch {
-            val bytes = (text + "\n").toByteArray(Charsets.UTF_8)
+    override suspend fun disarm() {
 
-            // SerialControl payload 'data' is 70 bytes.
-            var offset = 0
-            while (offset < bytes.size) {
-                val count = minOf(bytes.size - offset, 70)
-                val chunk = ByteArray(70)
-                System.arraycopy(bytes, offset, chunk, 0, count)
+        sendMavlinkMessage(
 
-                val sc = SerialControl.builder()
-                    .device(SerialControlDev.SERIAL_CONTROL_DEV_SHELL)
-                    .flags(SerialControlFlag.SERIAL_CONTROL_FLAG_RESPOND)
+            CommandLong.builder()
+
+                .targetSystem(config.droneSystemId)
+
+                .targetComponent(config.droneComponentId)
+
+                .command(MavCmd.MAV_CMD_COMPONENT_ARM_DISARM)
+
+                .param1(0f)
+
+                .build(),
+
+            )
+
+    }
+
+    override suspend fun sendSerialControl(
+
+        text: String,
+
+        ) {
+
+        val bytes =
+
+            (text + "\n")
+
+                .toByteArray(Charsets.UTF_8)
+
+        var offset = 0
+
+        while (offset < bytes.size) {
+
+            val count =
+
+                minOf(
+
+                    bytes.size - offset,
+
+                    70,
+
+                    )
+
+            val chunk = ByteArray(70)
+
+            System.arraycopy(
+
+                bytes,
+
+                offset,
+
+                chunk,
+
+                0,
+
+                count,
+
+                )
+
+            sendMavlinkMessage(
+
+                SerialControl.builder()
+
+                    .device(
+
+                        SerialControlDev.SERIAL_CONTROL_DEV_SHELL,
+
+                        )
+
+                    .flags(
+
+                        SerialControlFlag.SERIAL_CONTROL_FLAG_RESPOND,
+
+                        )
+
                     .timeout(0)
+
                     .baudrate(0)
+
                     .count(count)
+
                     .data(chunk)
-                    .build()
 
-                sendMavlinkMessage(sc)
-                offset += count
-            }
+                    .build(),
+
+                )
+
+            offset += count
+
         }
+
     }
 
-    // ── Private helpers ──────────────────────────────────────────────────────
+    private suspend fun sendLoop() {
 
-    private fun axisToManual(v: Float) = (v.coerceIn(-1f, 1f) * 1000).toInt()
-    private fun throttleToManual(v: Float) = (v.coerceIn(0f, 1f) * 1000).toInt()
+        var lastHeartbeatSentTime = 0L
 
-    private fun updateTargetAddress() {
-        try {
-            targetAddress = InetAddress.getByName(targetHost)
-        } catch (e: Exception) {
-            targetAddress = null
-        }
-    }
+        while (currentCoroutineContext().isActive) {
 
-    private fun startSendLoop() {
-        sendJob = scope.launch {
-            var lastHeartbeatSentTime = 0L
-            while (running.get()) {
-                val now = System.currentTimeMillis()
-                if (inited) {
-                    sendManualControl()
-                    if (now - lastHeartbeatSentTime >= 1000L) {
-                        sendHeartbeat()
-                        lastHeartbeatSentTime = now
-                    }
+            val now = System.currentTimeMillis()
+
+            if (inited) {
+
+                sendManualControl()
+
+                if (now - lastHeartbeatSentTime >= 1000L) {
+
+                    sendHeartbeat()
+
+                    lastHeartbeatSentTime = now
+
                 }
 
-                // Refresh connection status
-                val nowConnected = (now - lastHeartbeat) < HEARTBEAT_TIMEOUT_MS
-                if (nowConnected != isConnected) {
-                    isConnected = nowConnected
-                    onStateChanged?.invoke(isArmed, isConnected)
-                }
-                delay(20)  // 50 Hz
             }
+
+            val connected =
+
+                now - lastHeartbeat <
+
+                        heartbeatTimeoutMs
+
+            _state.update {
+
+                it.copy(
+
+                    connected = connected,
+
+                    )
+
+            }
+
+            delay(20)
+
         }
+
     }
 
-    private fun startReceiveLoop() {
-        recvJob = scope.launch {
-            val datagramPacket = DatagramPacket(ByteArray(1024), 1024)
+    private suspend fun receiveLoop() {
 
-            // Use an InputStream adapter for DatagramSocket
-            val inputStream = object : InputStream() {
+        val datagramPacket =
+
+            DatagramPacket(
+
+                ByteArray(1024),
+
+                1024,
+
+                )
+
+        val inputStream =
+
+            object : InputStream() {
+
                 private var buffer: ByteArray? = null
-                private var pos = 0
+
+                private var position = 0
+
                 private var limit = 0
 
                 override fun read(): Int {
-                    while (running.get()) {
-                        if (pos < limit) {
-                            return buffer!![pos++].toInt() and 0xFF
+
+                    while (scope.coroutineContext.job.isActive) {
+
+                        if (position < limit) {
+
+                            return (
+
+                                    buffer!![position++]
+
+                                        .toInt() and 0xFF
+
+                                    )
+
                         }
+
                         try {
-                            socket?.receive(datagramPacket)
-                            Log.v(
-                                "MavlinkManager",
-                                "Received UDP packet: ${datagramPacket.length} bytes from ${datagramPacket.address}:${datagramPacket.port}"
-                            )
-                            lastListenAddress = datagramPacket.address
-                            lastListenPort = datagramPacket.port
-                            buffer = datagramPacket.data
-                            pos = 0
-                            limit = datagramPacket.length
-                        } catch (e: IOException) {
-                            // Timeout or socket closed – keep trying until running is false
-                        }
-                    }
-                    return -1
-                }
-            }
 
-            val connection = MavlinkConnection.create(inputStream, null)
+                            socket?.receive(
 
-            while (running.get()) {
-                try {
-                    val message = connection.next() ?: continue
+                                datagramPacket,
 
-                    val payload = message.payload
-
-                    // Discovery logic: Update drone ID and target host if we see a heartbeat
-                    if (autoDetect && !inited && payload is Heartbeat) {
-                        lastListenAddress?.let { addr ->
-                            if (addr is Inet4Address && addr.hostAddress != null) {
-                                droneSystemId = message.originSystemId
-
-                                Log.i(
-                                    "MavlinkManager",
-                                    "Discovered Drone: SysID=${message.originSystemId}, CompID=${message.originComponentId} on ${addr.hostAddress}:${lastListenPort}"
                                 )
 
-                                targetHost = addr.hostAddress!!
-                                targetPort = lastListenPort
+                            lastListenAddress =
 
-                                val prefs = context?.getSharedPreferences(
-                                    "mavlink_prefs",
-                                    Context.MODE_PRIVATE
-                                )!!
-                                prefs.edit(commit = true) {
-                                    putString("host", targetHost)
-                                    putInt("port", targetPort)
-                                    putInt("drone_system_id", droneSystemId)
-                                }
+                                datagramPacket.address
 
-                                updateTargetAddress()
-                                inited = true
-                                isConnected = true
-                                onStateChanged?.invoke(isArmed, isConnected)
-                            }
+                            lastListenPort =
+
+                                datagramPacket.port
+
+                            buffer =
+
+                                datagramPacket.data
+
+                            position = 0
+
+                            limit =
+
+                                datagramPacket.length
+
+                        } catch (_: IOException) {
+
                         }
+
                     }
-                    // check that message is received from target drone
-                    if (message.originSystemId != droneSystemId || message.originComponentId != droneComponentId) continue
-                    Log.v(
-                        "MavlinkManager",
-                        "Received: ${payload.javaClass.simpleName} from ${message.originSystemId}"
-                    )
-                    when (payload) {
-                        is Heartbeat -> handleHeartbeat(payload)
-                        is Attitude -> {
-                            Log.v(
-                                "MavlinkManager",
-                                "Attitude: R=${payload.roll()}, P=${payload.pitch()}, Y=${payload.yaw()}"
-                            )
-                            handleAttitude(payload)
-                        }
 
-                        is AttitudeQuaternion -> {
-                            Log.v(
-                                "MavlinkManager",
-                                "AttitudeQuaternion: q=[${payload.q1()}, ${payload.q2()}, ${payload.q3()}, ${payload.q4()}]"
-                            )
-                            handleAttitudeQuaternion(payload)
-                        }
+                    return -1
 
-                        is BatteryStatus -> {
-                            // Sum all non-UINT16_MAX voltages
-                            val totalMv = payload.voltages().filter { it < 65535 }.sum()
-                            val volt = totalMv.toFloat() / 1000f
-                            Log.v("MavlinkManager", "Battery: $volt V")
-                            onBatteryVoltageReceived?.invoke(volt)
-                        }
-
-                        is Statustext -> {
-                            Log.i(
-                                "MavlinkManager",
-                                "Statustext: ${payload.text()} (severity=${
-                                    payload.severity().value()
-                                })"
-                            )
-                            onStatustextReceived?.invoke(payload.text(), payload.severity().value())
-                        }
-
-                        is SerialControl -> {
-                            Log.v("MavlinkManager", "SerialControl: ${payload.count()} bytes")
-                            val data = payload.data().copyOfRange(0, payload.count())
-                            onSerialControlReceived?.invoke(data)
-                        }
-                    }
-                } catch (e: Exception) {
-                    Log.e("MavlinkManager", "Error parsing MAVLink message", e)
                 }
+
             }
-        }
-    }
 
-    private fun sendManualControl() {
-        val manualControl = ManualControl.builder()
-            .target(droneSystemId)
-            .x(stickY) // Pitch
-            .y(stickX) // Roll
-            .z(stickZ) // Throttle
-            .r(stickR) // Yaw
-            .buttons(0)
-            .build()
-        sendMavlinkMessage(manualControl)
-    }
+        val connection =
 
-    private fun sendHeartbeat() {
-        val heartbeat = Heartbeat.builder()
-            .type(MavType.MAV_TYPE_GCS)
-            .autopilot(MavAutopilot.MAV_AUTOPILOT_GENERIC)
-            .baseMode(MavModeFlag.MAV_MODE_FLAG_CUSTOM_MODE_ENABLED) // Standard GCS mode
-            .systemStatus(MavState.MAV_STATE_ACTIVE)
-            .mavlinkVersion(3) // Standard for MAVLink
-            .build()
-        sendMavlinkMessage(heartbeat)
-    }
+            MavlinkConnection.create(
 
-    private fun sendMavlinkMessage(payload: Any) {
-        val addr = targetAddress ?: return
-        scope.launch {
-            try {
-                val outputStream = java.io.ByteArrayOutputStream()
-                val connection = MavlinkConnection.create(null, outputStream)
-                // Use send2 for MAVLink v2 as per user request
-                connection.send2(systemId, componentId, payload)
+                inputStream,
 
-                val packetData = outputStream.toByteArray()
-                val dp = DatagramPacket(packetData, packetData.size, addr, targetPort)
-                socket?.send(dp)
-            } catch (e: Exception) {
-                Log.e(
-                    "MavlinkManager",
-                    "Error sending MAVLink message to ${targetHost}:${targetPort}",
-                    e
+                null,
+
                 )
-            }
-        }
-    }
 
-    private fun handleHeartbeat(heartbeat: Heartbeat) {
-        lastHeartbeat = System.currentTimeMillis()
-        val beforeConnected = isConnected
-        isConnected = true
-        Log.i("MavlinkManager", "Got Heartbeat: ${heartbeat}")
+        while (currentCoroutineContext().isActive) {
 
-        // Flight mode
-        val modeName = getFlightModeName(heartbeat)
-        onFlightModeReceived?.invoke(modeName)
+            try {
 
-        val autopilot = heartbeat.autopilot().entry()
-        val current_autopilot_name = autopilot_name
-        if (autopilot == MavAutopilot.MAV_AUTOPILOT_ARDUPILOTMEGA) {
-            autopilot_name = "ArduPilot"
-        } else if (autopilot == MavAutopilot.MAV_AUTOPILOT_PX4) {
-            autopilot_name = "PX4"
-        } else if (autopilot == MavAutopilot.MAV_AUTOPILOT_GENERIC) {
-            autopilot_name = "Flix"
-        } else {
-            autopilot_name = ""
-        }
+                val message =
 
-        if (current_autopilot_name != autopilot_name) {
-            onAutopilotNameReceived?.invoke(autopilot_name)
-        }
+                    connection.next()
 
-        // Try raw bitwise check if flags() doesn't exist
-        val nowArmed = (heartbeat.baseMode().value() and 0x80) != 0
-        if (nowArmed != isArmed || beforeConnected != isConnected) {
-            isArmed = nowArmed
-            onStateChanged?.invoke(isArmed, isConnected)
-        }
-    }
+                        ?: continue
 
-    private fun getFlightModeName(heartbeat: Heartbeat): String {
-        val mode = heartbeat.customMode()
-        val autopilot = heartbeat.autopilot().entry()
+                val payload =
 
-        if (autopilot == MavAutopilot.MAV_AUTOPILOT_ARDUPILOTMEGA) {
-            return when (mode.toInt()) {
-                0 -> "STABILIZE"
-                1 -> "ACRO"
-                2 -> "ALT_HOLD"
-                3 -> "AUTO"
-                4 -> "GUIDED"
-                5 -> "LOITER"
-                6 -> "RTL"
-                7 -> "CIRCLE"
-                9 -> "LAND"
-                11 -> "DRIFT"
-                13 -> "SPORT"
-                14 -> "FLIP"
-                15 -> "AUTOTUNE"
-                16 -> "POSHOLD"
-                17 -> "BRAKE"
-                18 -> "THROW"
-                19 -> "AVOID_ADSB"
-                20 -> "GUIDED_NOGPS"
-                21 -> "SMART_RTL"
-                22 -> "FLOWHOLD"
-                23 -> "FOLLOW"
-                24 -> "ZIGZAG"
-                25 -> "SYSTEMID"
-                26 -> "AUTOROTATE"
-                27 -> "AUTO_RTL"
-                else -> "MODE($mode)"
-            }
-        } else if (autopilot == MavAutopilot.MAV_AUTOPILOT_PX4) {
-            val customMode = mode.toLong()
-            val mainMode = ((customMode shr 16) and 0xFF).toInt()
-            val subMode = ((customMode shr 24) and 0xFF).toInt()
+                    message.payload
 
-            return when (mainMode) {
-                1 -> "MANUAL"
-                2 -> "ALTCTL"
-                3 -> "POSCTL"
-                4 -> when (subMode) {
-                    2 -> "TAKEOFF"
-                    3 -> "LOITER"
-                    4 -> "MISSION"
-                    5 -> "RTL"
-                    6 -> "LAND"
-                    8 -> "FOLLOW"
-                    else -> "AUTO"
+                if (
+
+                    config.autoDetect &&
+
+                    !inited &&
+
+                    payload is Heartbeat
+
+                ) {
+
+                    discoverDrone(message)
+
                 }
 
-                5 -> "ACRO"
-                6 -> "OFFBOARD"
-                7 -> "STABILIZED"
-                else -> "MODE($mainMode:$subMode)"
+                if (
+
+                    message.originSystemId != config.droneSystemId ||
+
+                    message.originComponentId != config.droneComponentId
+
+                ) {
+
+                    continue
+
+                }
+
+                when (payload) {
+
+                    is Heartbeat -> {
+
+                        handleHeartbeat(payload)
+
+                    }
+
+                    is Attitude -> {
+
+                        handleAttitude(payload)
+
+                    }
+
+                    is AttitudeQuaternion -> {
+
+                        handleAttitudeQuaternion(payload)
+
+                    }
+
+                    is BatteryStatus -> {
+
+                        val totalMv =
+
+                            payload.voltages()
+
+                                .filter { it < 65535 }
+
+                                .sum()
+
+                        val voltage =
+
+                            totalMv.toFloat() / 1000f
+
+                        _state.update {
+
+                            it.copy(
+
+                                batteryVoltage = voltage,
+
+                                )
+
+                        }
+
+                    }
+
+                    is Statustext -> {
+
+                        _events.emit(
+
+                            MavlinkEvent.StatusText(
+
+                                text = payload.text(),
+
+                                severity = payload.severity().value(),
+
+                                ),
+
+                            )
+
+                    }
+
+                    is SerialControl -> {
+
+                        _events.emit(
+
+                            MavlinkEvent.SerialData(
+
+                                payload.data()
+
+                                    .copyOfRange(
+
+                                        0,
+
+                                        payload.count(),
+
+                                        ),
+
+                                ),
+
+                            )
+
+                    }
+
+                }
+
+            } catch (e: Exception) {
+
+                Log.e(
+
+                    "Mavlink",
+
+                    "Receive error",
+
+                    e,
+
+                    )
+
             }
-        } else if (autopilot == MavAutopilot.MAV_AUTOPILOT_GENERIC) {
-            // just detecting drone as flix
-            return when (mode.toInt()) {
-                0 -> "RAW"
-                1 -> "ACRO"
-                2 -> "STAB"
-                3 -> "AUTO"
-                else -> "MODE($mode)"
-            }
+
         }
-        return "MODE($mode)"
+
     }
 
-    private fun handleAttitude(attitude: Attitude) {
-        onAttitudeReceived?.invoke(
-            Math.toDegrees(attitude.roll().toDouble()).toFloat(),
-            Math.toDegrees(attitude.pitch().toDouble()).toFloat(),
-            Math.toDegrees(attitude.yaw().toDouble()).toFloat()
-        )
+    private suspend fun discoverDrone(
+
+        message: io.dronefleet.mavlink.MavlinkMessage<*>,
+
+        ) {
+
+        val addr =
+
+            lastListenAddress
+
+                ?: return
+
+        if (addr !is Inet4Address) {
+
+            return
+
+        }
+
+        config =
+
+            config.copy(
+
+                targetHost = addr.hostAddress!!,
+
+                targetPort = lastListenPort,
+
+                droneSystemId = message.originSystemId,
+
+                )
+
+        updateTargetAddress()
+
+        inited = true
+
+        _state.update {
+
+            it.copy(
+
+                connected = true,
+
+                targetHost = config.targetHost,
+
+                targetPort = config.targetPort,
+
+                )
+
+        }
+
     }
 
-    private fun handleAttitudeQuaternion(aq: AttitudeQuaternion) {
+    private suspend fun sendManualControl() {
+
+        sendMavlinkMessage(
+
+            ManualControl.builder()
+
+                .target(config.droneSystemId)
+
+                .x(stickY)
+
+                .y(stickX)
+
+                .z(stickZ)
+
+                .r(stickR)
+
+                .buttons(0)
+
+                .build(),
+
+            )
+
+    }
+
+    private suspend fun sendHeartbeat() {
+
+        sendMavlinkMessage(
+
+            Heartbeat.builder()
+
+                .type(MavType.MAV_TYPE_GCS)
+
+                .autopilot(
+
+                    MavAutopilot.MAV_AUTOPILOT_GENERIC,
+
+                    )
+
+                .baseMode(
+
+                    MavModeFlag.MAV_MODE_FLAG_CUSTOM_MODE_ENABLED,
+
+                    )
+
+                .systemStatus(
+
+                    MavState.MAV_STATE_ACTIVE,
+
+                    )
+
+                .mavlinkVersion(3)
+
+                .build(),
+
+            )
+
+    }
+
+    private suspend fun sendMavlinkMessage(
+
+        payload: Any,
+
+        ) {
+
+        val address =
+
+            targetAddress
+
+                ?: return
+
+        try {
+
+            val output =
+
+                ByteArrayOutputStream()
+
+            val connection =
+
+                MavlinkConnection.create(
+
+                    null,
+
+                    output,
+
+                    )
+
+            connection.send2(
+
+                config.systemId,
+
+                config.componentId,
+
+                payload,
+
+                )
+
+            val packet =
+
+                DatagramPacket(
+
+                    output.toByteArray(),
+
+                    output.size(),
+
+                    address,
+
+                    config.targetPort,
+
+                    )
+
+            socket?.send(packet)
+
+        } catch (e: Exception) {
+
+            Log.e(
+
+                "Mavlink",
+
+                "Send error",
+
+                e,
+
+                )
+
+        }
+
+    }
+
+    private fun handleHeartbeat(
+
+        heartbeat: Heartbeat,
+
+        ) {
+
+        lastHeartbeat =
+
+            System.currentTimeMillis()
+
+        val armed =
+
+            (
+
+                    heartbeat.baseMode().value() and
+
+                            0x80
+
+                    ) != 0
+
+        val autopilot =
+
+            heartbeat.autopilot().entry()
+
+        autopilotName =
+
+            when (autopilot) {
+
+                MavAutopilot.MAV_AUTOPILOT_ARDUPILOTMEGA ->
+
+                    "ArduPilot"
+
+                MavAutopilot.MAV_AUTOPILOT_PX4 ->
+
+                    "PX4"
+
+                MavAutopilot.MAV_AUTOPILOT_GENERIC ->
+
+                    "Flix"
+
+                else ->
+
+                    "---"
+
+            }
+
+        _state.update {
+
+            it.copy(
+
+                armed = armed,
+
+                connected = true,
+
+                flightMode = getFlightModeName(
+
+                    heartbeat,
+
+                    ),
+
+                autopilotName = autopilotName,
+
+                )
+
+        }
+
+    }
+
+    private fun handleAttitude(
+
+        attitude: Attitude,
+
+        ) {
+
+        _state.update {
+
+            it.copy(
+
+                rollDeg = Math.toDegrees(
+
+                    attitude.roll().toDouble(),
+
+                    ).toFloat(),
+
+                pitchDeg = Math.toDegrees(
+
+                    attitude.pitch().toDouble(),
+
+                    ).toFloat(),
+
+                yawDeg = Math.toDegrees(
+
+                    attitude.yaw().toDouble(),
+
+                    ).toFloat(),
+
+                )
+
+        }
+
+    }
+
+    private fun handleAttitudeQuaternion(
+
+        aq: AttitudeQuaternion,
+
+        ) {
+
         val w = aq.q1()
+
         val x = aq.q2()
+
         val y = aq.q3()
+
         val z = aq.q4()
 
-        // https://en.wikipedia.org/wiki/Conversion_between_quaternions_and_Euler_angles#Quaternion_to_Euler_angles_conversion
-        val roll = Math.atan2(2.0 * (w * x + y * z), 1.0 - 2.0 * (x * x + y * y))
-        val pitch = Math.asin((2.0 * (w * y - z * x)).coerceIn(-1.0, 1.0))
-        val yaw = Math.atan2(2.0 * (w * z + x * y), 1.0 - 2.0 * (y * y + z * z))
+        val roll =
 
-        onAttitudeReceived?.invoke(
-            Math.toDegrees(roll).toFloat(),
-            Math.toDegrees(pitch).toFloat(),
-            Math.toDegrees(yaw).toFloat()
-        )
+            atan2(
+
+                2.0 * (w * x + y * z),
+
+                1.0 - 2.0 * (x * x + y * y),
+
+                )
+
+        val pitch =
+
+            asin(
+
+                (
+
+                        2.0 * (w * y - z * x)
+
+                        ).coerceIn(-1.0, 1.0),
+
+                )
+
+        val yaw =
+
+            atan2(
+
+                2.0 * (w * z + x * y),
+
+                1.0 - 2.0 * (y * y + z * z),
+
+                )
+
+        _state.update {
+
+            it.copy(
+
+                rollDeg = Math.toDegrees(roll).toFloat(),
+
+                pitchDeg = Math.toDegrees(pitch).toFloat(),
+
+                yawDeg = Math.toDegrees(yaw).toFloat(),
+
+                )
+
+        }
+
     }
+
+    private fun getFlightModeName(
+
+        heartbeat: Heartbeat,
+
+        ): String {
+
+        val mode =
+
+            heartbeat.customMode()
+
+        return when (
+
+            heartbeat.autopilot().entry()
+
+        ) {
+
+            MavAutopilot.MAV_AUTOPILOT_ARDUPILOTMEGA -> {
+
+                when (mode.toInt()) {
+
+                    0 -> "STABILIZE"
+
+                    1 -> "ACRO"
+
+                    2 -> "ALT_HOLD"
+
+                    3 -> "AUTO"
+
+                    4 -> "GUIDED"
+
+                    5 -> "LOITER"
+
+                    6 -> "RTL"
+
+                    9 -> "LAND"
+
+                    else -> "MODE($mode)"
+
+                }
+
+            }
+
+            MavAutopilot.MAV_AUTOPILOT_PX4 -> {
+
+                val customMode =
+
+                    mode.toLong()
+
+                val mainMode =
+
+                    ((customMode shr 16) and 0xFF)
+
+                        .toInt()
+
+                val subMode =
+
+                    ((customMode shr 24) and 0xFF)
+
+                        .toInt()
+
+                when (mainMode) {
+
+                    1 -> "MANUAL"
+
+                    2 -> "ALTCTL"
+
+                    3 -> "POSCTL"
+
+                    4 -> {
+
+                        when (subMode) {
+
+                            2 -> "TAKEOFF"
+
+                            3 -> "LOITER"
+
+                            4 -> "MISSION"
+
+                            5 -> "RTL"
+
+                            6 -> "LAND"
+
+                            else -> "AUTO"
+
+                        }
+
+                    }
+
+                    5 -> "ACRO"
+
+                    6 -> "OFFBOARD"
+
+                    7 -> "STABILIZED"
+
+                    else -> "MODE($mainMode:$subMode)"
+
+                }
+
+            }
+
+            else -> "MODE($mode)"
+
+        }
+
+    }
+
+    private fun axisToManual(
+
+        value: Float,
+
+        ): Int {
+
+        return (
+
+                value.coerceIn(-1f, 1f) * 1000f
+
+                ).toInt()
+
+    }
+
+    private fun throttleToManual(
+
+        value: Float,
+
+        ): Int {
+
+        return (
+
+                value.coerceIn(0f, 1f) * 1000f
+
+                ).toInt()
+
+    }
+
+    private fun updateTargetAddress() {
+
+        targetAddress =
+
+            try {
+
+                InetAddress.getByName(
+
+                    config.targetHost,
+
+                    )
+
+            } catch (_: Exception) {
+
+                null
+
+            }
+
+    }
+
+    private fun registerConnectivity() {
+
+        try {
+
+            val request =
+
+                NetworkRequest.Builder()
+
+                    .addCapability(
+
+                        NetworkCapabilities.NET_CAPABILITY_INTERNET,
+
+                        )
+
+                    .build()
+
+            connectivityManager.registerNetworkCallback(
+
+                request,
+
+                networkCallback,
+
+                )
+
+        } catch (e: Exception) {
+
+            Log.e(
+
+                "Mavlink",
+
+                "Connectivity register failed",
+
+                e,
+
+                )
+
+        }
+
+    }
+
+    private fun unregisterConnectivity() {
+
+        try {
+
+            connectivityManager.unregisterNetworkCallback(
+
+                networkCallback,
+
+                )
+
+        } catch (_: Exception) {
+
+        }
+
+    }
+
 }

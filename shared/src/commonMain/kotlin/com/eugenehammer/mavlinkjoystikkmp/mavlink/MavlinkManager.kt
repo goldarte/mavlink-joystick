@@ -1,17 +1,93 @@
 package com.eugenehammer.mavlinkjoystikkmp.mavlink
 
-expect class MavlinkManager {
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.StateFlow
 
-    fun start()
+interface MavlinkManager {
 
-    fun stop()
+    val state: StateFlow<MavlinkState>
 
-    /** Update control values. All inputs are -1.0..1.0 (throttle 0..1). */
-    fun setChannels(roll: Float, pitch: Float, throttle: Float, yaw: Float)
+    val events: SharedFlow<MavlinkEvent>
 
-    /** Send MAV_CMD_COMPONENT_ARM_DISARM (400). */
-    fun sendArmCommand(arm: Boolean)
+    suspend fun start()
 
-    /** Send a command via SERIAL_CONTROL (msg #126) with DEV_SHELL flag. */
-    fun sendSerialControl(text: String)
+    suspend fun stop()
+
+    suspend fun updateConfig(
+
+        config: MavlinkConfig,
+
+        )
+
+    suspend fun setChannels(
+
+        roll: Float,
+
+        pitch: Float,
+
+        throttle: Float,
+
+        yaw: Float,
+
+        )
+
+    suspend fun arm()
+
+    suspend fun disarm()
+
+    suspend fun sendSerialControl(
+
+        text: String,
+
+        )
+
 }
+
+data class MavlinkState(
+    val armed: Boolean = false,
+    val connected: Boolean = false,
+
+    val rollDeg: Float = 0f,
+    val pitchDeg: Float = 0f,
+    val yawDeg: Float = 0f,
+
+    val batteryVoltage: Float? = null,
+
+    val flightMode: String = "---",
+    val autopilotName: String = "---",
+
+    val targetHost: String = "",
+    val targetPort: Int = 0,
+)
+
+sealed interface MavlinkEvent {
+
+    data class StatusText(
+        val text: String,
+        val severity: Int,
+    ) : MavlinkEvent
+
+    data class SerialData(
+        val data: ByteArray,
+    ) : MavlinkEvent
+}
+
+data class MavlinkConfig(
+
+    val targetHost: String,
+
+    val targetPort: Int,
+
+    val listenPort: Int,
+
+    val droneSystemId: Int,
+
+    val droneComponentId: Int,
+
+    val autoDetect: Boolean,
+
+    val systemId: Int = 255,
+
+    val componentId: Int = 190,
+
+    )

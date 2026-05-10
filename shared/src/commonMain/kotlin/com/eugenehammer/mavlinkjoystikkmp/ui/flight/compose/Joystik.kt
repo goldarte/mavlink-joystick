@@ -41,13 +41,14 @@ import kotlin.math.sqrt
 internal fun Joystick(
     modifier: Modifier = Modifier,
     isThrottleMode: Boolean = false,
-    showCircularArea: Boolean = true,
-    showSquareArea: Boolean = true,
-    showCircleBoundaries: Boolean = false,
-    knobColor: Color = Color(0xFFFF5C8D),
-    stickSizeFactor: Float = 0.65f,
-    onChanged: (x: Float, y: Float) -> Unit = { _, _ -> },
+    onChanged: (x: Float, y: Float) -> Unit,
 ) {
+
+    val showCircularArea = true
+    val showSquareArea = true
+    val showCircleBoundaries = false
+    val stickSizeFactor = 0.65f
+    val knobColor = Color(0xFFFF5C8D)
 
     var canvasSize by remember {
         mutableStateOf(IntSize.Zero)
@@ -71,11 +72,15 @@ internal fun Joystick(
     val center = remember(width, height) {
         Offset(
             x = width / 2f,
-            y = height / 2f
+            y = height / 2f,
         )
     }
 
-    val radius = remember(width, height, stickSizeFactor) {
+    val radius = remember(
+        width,
+        height,
+        stickSizeFactor,
+    ) {
         (min(width, height) / 2f) *
                 0.88f *
                 stickSizeFactor.coerceIn(0.25f, 1f)
@@ -90,15 +95,16 @@ internal fun Joystick(
     val defaultKnobPosition = remember(
         center,
         radius,
-        isThrottleMode
+        isThrottleMode,
     ) {
         Offset(
             x = center.x,
+
             y = if (isThrottleMode) {
                 center.y + radius
             } else {
                 center.y
-            }
+            },
         )
     }
 
@@ -106,23 +112,24 @@ internal fun Joystick(
     // Final knob position
     // ════════════════════════════════════════════
 
-    val rawKnob = knobPosition ?: defaultKnobPosition
+    val rawKnob =
+        knobPosition ?: defaultKnobPosition
 
     val constrainedKnob = remember(
         rawKnob,
         center,
-        radius
+        radius,
     ) {
         Offset(
             x = rawKnob.x.coerceIn(
                 center.x - radius,
-                center.x + radius
+                center.x + radius,
             ),
 
             y = rawKnob.y.coerceIn(
                 center.y - radius,
-                center.y + radius
-            )
+                center.y + radius,
+            ),
         )
     }
 
@@ -130,7 +137,7 @@ internal fun Joystick(
         constrainedKnob,
         center,
         isDragging,
-        isThrottleMode
+        isThrottleMode,
     ) {
 
         if (isDragging) {
@@ -146,7 +153,7 @@ internal fun Joystick(
                     constrainedKnob.y
                 } else {
                     center.y
-                }
+                },
             )
         }
     }
@@ -158,13 +165,18 @@ internal fun Joystick(
     val valueX = remember(
         finalKnob,
         center,
-        radius
+        radius,
     ) {
 
         if (radius <= 0f) {
+
             0f
+
         } else {
-            ((finalKnob.x - center.x) / radius)
+
+            (
+                    (finalKnob.x - center.x) / radius
+                    )
                 .coerceIn(-1f, 1f)
         }
     }
@@ -173,33 +185,46 @@ internal fun Joystick(
         finalKnob,
         center,
         radius,
-        isThrottleMode
+        isThrottleMode,
     ) {
 
         if (radius <= 0f) {
+
             0f
+
         } else if (isThrottleMode) {
 
             (
                     1f - (
-                            (finalKnob.y - (center.y - radius)) /
-                                    (2f * radius)
+                            (
+                                    finalKnob.y - (center.y - radius)
+                                    ) / (2f * radius)
                             )
-                    ).coerceIn(0f, 1f)
+                    )
+                .coerceIn(0f, 1f)
 
         } else {
 
-            ((finalKnob.y - center.y) / radius)
+            (
+                    (finalKnob.y - center.y) / radius
+                    )
                 .coerceIn(-1f, 1f)
         }
     }
 
     // ════════════════════════════════════════════
-    // Side-effect outside Canvas
+    // Side-effect
     // ════════════════════════════════════════════
 
-    LaunchedEffect(valueX, valueY) {
-        onChanged(valueX, valueY)
+    LaunchedEffect(
+        valueX,
+        valueY,
+    ) {
+
+        onChanged(
+            valueX,
+            valueY,
+        )
     }
 
     // ════════════════════════════════════════════
@@ -218,34 +243,55 @@ internal fun Joystick(
             .pointerInput(
                 center,
                 radius,
-                isThrottleMode
+                isThrottleMode,
             ) {
 
                 detectDragGestures(
 
                     onDragStart = { offset ->
+
                         isDragging = true
+
                         knobPosition = offset
                     },
 
                     onDragEnd = {
+
                         isDragging = false
                     },
 
                     onDragCancel = {
+
                         isDragging = false
                     },
 
                     onDrag = { change, _ ->
+
                         knobPosition = change.position
-                    }
+                    },
                 )
-            }
+            },
     ) {
 
-        val ringColor = Color.White.copy(alpha = 0.27f)
-        val fillColor = Color.White.copy(alpha = 0.08f)
-        val crossColor = Color.White.copy(alpha = 0.2f)
+        // FIX:
+        // First composition may happen with zero size.
+        // Android RadialGradient crashes with radius <= 0.
+
+        if (
+            radius <= 0f ||
+            knobRadius <= 0f
+        ) {
+            return@Canvas
+        }
+
+        val ringColor =
+            Color.White.copy(alpha = 0.27f)
+
+        val fillColor =
+            Color.White.copy(alpha = 0.08f)
+
+        val crossColor =
+            Color.White.copy(alpha = 0.2f)
 
         // ════════════════════════════════════════════
         // Square area
@@ -255,37 +301,48 @@ internal fun Joystick(
 
             drawRect(
                 color = fillColor,
+
                 topLeft = Offset(
                     center.x - radius,
-                    center.y - radius
+                    center.y - radius,
                 ),
+
                 size = Size(
                     radius * 2f,
-                    radius * 2f
-                )
+                    radius * 2f,
+                ),
             )
 
             drawRect(
                 color = ringColor,
+
                 topLeft = Offset(
                     center.x - radius,
-                    center.y - radius
+                    center.y - radius,
                 ),
+
                 size = Size(
                     radius * 2f,
-                    radius * 2f
+                    radius * 2f,
                 ),
-                style = Stroke(3.dp.toPx())
+
+                style = Stroke(3.dp.toPx()),
             )
 
             drawRect(
                 color = ringColor,
+
                 topLeft = Offset(
                     center.x - radius * 0.5f,
-                    center.y - radius * 0.5f
+                    center.y - radius * 0.5f,
                 ),
-                size = Size(radius, radius),
-                style = Stroke(3.dp.toPx())
+
+                size = Size(
+                    radius,
+                    radius,
+                ),
+
+                style = Stroke(3.dp.toPx()),
             )
         }
 
@@ -295,22 +352,25 @@ internal fun Joystick(
 
         if (showCircularArea) {
 
-            val outerRadius = radius * sqrt(2f)
-            val outerOuterRadius = outerRadius * 1.05f
+            val outerRadius =
+                radius * sqrt(2f)
+
+            val outerOuterRadius =
+                outerRadius * 1.05f
 
             if (outerOuterRadius < min(center.x, center.y)) {
 
                 drawCircle(
                     color = fillColor,
                     radius = outerRadius,
-                    center = center
+                    center = center,
                 )
 
                 drawCircle(
                     color = ringColor,
                     radius = outerOuterRadius,
                     center = center,
-                    style = Stroke(10.dp.toPx())
+                    style = Stroke(10.dp.toPx()),
                 )
             }
         }
@@ -324,21 +384,21 @@ internal fun Joystick(
             drawCircle(
                 color = fillColor,
                 radius = radius,
-                center = center
+                center = center,
             )
 
             drawCircle(
                 color = ringColor,
                 radius = radius,
                 center = center,
-                style = Stroke(3.dp.toPx())
+                style = Stroke(3.dp.toPx()),
             )
 
             drawCircle(
                 color = ringColor,
                 radius = radius * 0.5f,
                 center = center,
-                style = Stroke(3.dp.toPx())
+                style = Stroke(3.dp.toPx()),
             )
         }
 
@@ -348,28 +408,34 @@ internal fun Joystick(
 
         drawLine(
             color = crossColor,
+
             start = Offset(
                 center.x - radius,
-                center.y
+                center.y,
             ),
+
             end = Offset(
                 center.x + radius,
-                center.y
+                center.y,
             ),
-            strokeWidth = 1.5.dp.toPx()
+
+            strokeWidth = 1.5.dp.toPx(),
         )
 
         drawLine(
             color = crossColor,
+
             start = Offset(
                 center.x,
-                center.y - radius
+                center.y - radius,
             ),
+
             end = Offset(
                 center.x,
-                center.y + radius
+                center.y + radius,
             ),
-            strokeWidth = 1.5.dp.toPx()
+
+            strokeWidth = 1.5.dp.toPx(),
         )
 
         // ════════════════════════════════════════════
@@ -380,13 +446,17 @@ internal fun Joystick(
             brush = Brush.radialGradient(
                 colors = listOf(
                     knobColor.copy(alpha = 0.33f),
-                    Color.Transparent
+                    Color.Transparent,
                 ),
+
                 center = finalKnob,
-                radius = knobRadius * 2.2f
+
+                radius = knobRadius * 2.2f,
             ),
+
             radius = knobRadius * 2.2f,
-            center = finalKnob
+
+            center = finalKnob,
         )
 
         // ════════════════════════════════════════════
@@ -397,23 +467,30 @@ internal fun Joystick(
             brush = Brush.radialGradient(
                 colors = listOf(
                     knobColor,
-                    knobColor.copy(alpha = 0.78f)
+                    knobColor.copy(alpha = 0.78f),
                 ),
+
                 center = Offset(
                     finalKnob.x,
-                    finalKnob.y - knobRadius * 0.3f
+                    finalKnob.y - knobRadius * 0.3f,
                 ),
-                radius = knobRadius
+
+                radius = knobRadius,
             ),
+
             radius = knobRadius,
-            center = finalKnob
+
+            center = finalKnob,
         )
 
         drawCircle(
             color = Color.White.copy(alpha = 0.8f),
+
             radius = knobRadius,
+
             center = finalKnob,
-            style = Stroke(2.5.dp.toPx())
+
+            style = Stroke(2.5.dp.toPx()),
         )
     }
 }

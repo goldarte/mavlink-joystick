@@ -6,6 +6,6 @@ import androidx.compose.ui.tooling.preview.Preview
 
 @Preview
 @Composable
-fun SettingsScreen() {
+fun SettingsScreen(goBack: () -> Unit) {
     Scaffold { paddingValues -> }
 }
