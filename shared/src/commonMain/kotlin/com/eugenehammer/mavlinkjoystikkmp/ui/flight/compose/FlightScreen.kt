@@ -19,7 +19,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -30,16 +30,27 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.eugenehammer.mavlinkjoystikkmp.ui.flight.FlightScreenEvent
 import com.eugenehammer.mavlinkjoystikkmp.ui.flight.FlightViewModel
+import kotlinx.coroutines.flow.collectLatest
 import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
 fun FlightScreen(
     modifier: Modifier = Modifier,
-    onOpenSettings: () -> Unit,
+    openSettings: () -> Unit,
     vm: FlightViewModel = koinViewModel()
 ) {
-    val state by vm.uiState.collectAsState()
+    val state by vm.uiState.collectAsStateWithLifecycle()
+
+    LaunchedEffect(Unit) {
+        vm.events.collectLatest { event ->
+            when (event) {
+                is FlightScreenEvent.GoToSettings -> openSettings()
+            }
+        }
+    }
 
     Row(
         modifier = modifier
@@ -59,8 +70,9 @@ fun FlightScreen(
 
             Joystick(
                 modifier = Modifier.fillMaxSize(),
-                isThrottleMode = true,
+                state = state.leftJoystickState,
                 onChanged = vm::onLeftStickChanged,
+                onDragEnd = vm::onLeftStickReleased,
             )
 
             Row(
@@ -248,7 +260,7 @@ fun FlightScreen(
                 )
 
                 TextButton(
-                    onClick = onOpenSettings,
+                    onClick = vm::onSettingsButtonClicked,
                     contentPadding = PaddingValues(
                         horizontal = 6.dp,
                         vertical = 0.dp,
@@ -277,8 +289,9 @@ fun FlightScreen(
 
             Joystick(
                 modifier = Modifier.fillMaxSize(),
-                isThrottleMode = false,
+                state = state.rightJoystickState,
                 onChanged = vm::onRightStickChanged,
+                onDragEnd = vm::onRightStickReleased
             )
 
             Row(

@@ -14,8 +14,8 @@ object CurveUtils {
      * offset: addition, typically [-1, 1]
      * expo: exponential curve, [0, 1] where 0 is linear
      */
-    fun applyCurve(x: Float, weight: Float, offset: Float, expo: Float): Float {
-        val xExpo = applyExpo(x, expo)
+    fun applyCurve(value: Float, weight: Float, offset: Float, expo: Float): Float {
+        val xExpo = applyExpo(value = value, expo = expo)
         return (xExpo * weight + offset).coerceIn(-1f, 1f)
     }
 
@@ -23,10 +23,10 @@ object CurveUtils {
      * EdgeTX-style expo: y = x^3 * expo + x * (1 - expo)
      * This provides a smooth curve through zero.
      */
-    fun applyExpo(x: Float, expo: Float): Float {
-        if (expo == 0f) return x
+    fun applyExpo(value: Float, expo: Float): Float {
+        if (expo == 0f) return value
         // Common formula: y = x * (1 - expo) + x^3 * expo
         // This is a simple approximation of EdgeTX expo
-        return x * (1f - expo) + (x.pow(3)) * expo
+        return value * (1f - expo) + (value.pow(3)) * expo
     }
 }

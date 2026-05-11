@@ -12,4 +12,18 @@ data class FlightScreenState(
     val rollDeg: Float,
     val pitchDeg: Float,
     val yawHeading: Float,
-)
+
+    val leftJoystickState: JoystickState,
+    val rightJoystickState: JoystickState,
+) {
+    data class JoystickState(
+        val x: Float,
+        val y: Float,
+        val isDragging: Boolean,
+        val isThrottleMode: Boolean,
+    )
+}
+
+sealed interface FlightScreenEvent {
+    data object GoToSettings: FlightScreenEvent
+}
