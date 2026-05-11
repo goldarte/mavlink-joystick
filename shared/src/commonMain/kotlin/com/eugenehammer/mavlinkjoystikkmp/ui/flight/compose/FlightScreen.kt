@@ -72,7 +72,6 @@ fun FlightScreen(
                 modifier = Modifier.fillMaxSize(),
                 state = state.leftJoystickState,
                 onChanged = vm::onLeftStickChanged,
-                onDragEnd = vm::onLeftStickReleased,
             )
 
             Row(
@@ -291,7 +290,6 @@ fun FlightScreen(
                 modifier = Modifier.fillMaxSize(),
                 state = state.rightJoystickState,
                 onChanged = vm::onRightStickChanged,
-                onDragEnd = vm::onRightStickReleased
             )
 
             Row(

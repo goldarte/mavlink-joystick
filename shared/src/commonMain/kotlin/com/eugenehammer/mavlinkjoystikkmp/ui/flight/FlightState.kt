@@ -17,13 +17,15 @@ data class FlightScreenState(
     val rightJoystickState: JoystickState,
 ) {
     data class JoystickState(
-        val x: Float,
-        val y: Float,
-        val isDragging: Boolean,
+        val valueX: Float,
+        val valueY: Float,
         val isThrottleMode: Boolean,
+        val showCircularArea: Boolean,
+        val showSquareArea: Boolean,
+        val showCircleBoundaries: Boolean,
     )
 }
 
 sealed interface FlightScreenEvent {
-    data object GoToSettings: FlightScreenEvent
+    data object GoToSettings : FlightScreenEvent
 }

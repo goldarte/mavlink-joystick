@@ -19,10 +19,12 @@ class FlightViewModel(
     private val appSettings: AppSettings,
 ) : ViewModel() {
     private val leftJoystickInitialState = FlightScreenState.JoystickState(
-        x = 0f,
-        y = 0f,
-        isDragging = false,
-        isThrottleMode = true
+        valueX = 0f,
+        valueY = 0f,
+        isThrottleMode = true,
+        showCircularArea = true,
+        showSquareArea = true,
+        showCircleBoundaries = true,
     )
     private val _uiState = MutableStateFlow(
         FlightScreenState(
@@ -53,6 +55,22 @@ class FlightViewModel(
     private fun subscribeOnSettings() {
         viewModelScope.launch {
             appSettings.state.collectLatest { newSettings ->
+                _uiState.update {
+                    it.copy(
+                        leftJoystickState = it.leftJoystickState.copy(
+                            isThrottleMode = newSettings.isLeftJoystickInThrottleMode,
+                            showCircularArea = newSettings.showCircularArea,
+                            showSquareArea = newSettings.showSquareArea,
+                            showCircleBoundaries = newSettings.showCircleBoundaries
+                        ),
+                        rightJoystickState = it.rightJoystickState.copy(
+                            isThrottleMode = newSettings.isRightJoystickInThrottleMode,
+                            showCircularArea = newSettings.showCircularArea,
+                            showSquareArea = newSettings.showSquareArea,
+                            showCircleBoundaries = newSettings.showCircleBoundaries
+                        )
+                    )
+                }
                 mavlinkManager.stop()
                 mavlinkManager.targetHost = newSettings.host
                 mavlinkManager.targetPort = newSettings.port
@@ -97,21 +115,27 @@ class FlightViewModel(
     }
 
     fun onLeftStickChanged(x: Float, y: Float) {
-        _uiState.update { it.copy(leftJoystickState = it.leftJoystickState.copy(x = x, y = y)) }
+        _uiState.update {
+            it.copy(
+                leftJoystickState = it.leftJoystickState.copy(
+                    valueX = x,
+                    valueY = y
+                )
+            )
+        }
         pushChannels()
-    }
-
-    fun onLeftStickReleased() {
-        _uiState.update { it.copy(leftJoystickState = it.leftJoystickState.copy(isDragging = false)) }
     }
 
     fun onRightStickChanged(x: Float, y: Float) {
-        _uiState.update { it.copy(rightJoystickState = it.rightJoystickState.copy(x = x, y = y)) }
+        _uiState.update {
+            it.copy(
+                rightJoystickState = it.rightJoystickState.copy(
+                    valueX = x,
+                    valueY = y
+                )
+            )
+        }
         pushChannels()
-    }
-
-    fun onRightStickReleased() {
-        _uiState.update { it.copy(rightJoystickState = it.rightJoystickState.copy(isDragging = false)) }
     }
 
     fun onSettingsButtonClicked() {
@@ -139,28 +163,28 @@ class FlightViewModel(
     private fun pushChannels() {
         with(appSettings.state.value) {
             val roll = CurveUtils.applyCurve(
-                value = _uiState.value.rightJoystickState.x,
+                value = _uiState.value.rightJoystickState.valueX,
                 weight = rollWeight,
                 offset = rollOffset,
                 expo = rollExpo,
             )
 
             val pitch = CurveUtils.applyCurve(
-                value = _uiState.value.rightJoystickState.y,
+                value = _uiState.value.rightJoystickState.valueY,
                 weight = pitchWeight,
                 offset = pitchOffset,
                 expo = pitchExpo,
             )
 
             val yaw = CurveUtils.applyCurve(
-                value = _uiState.value.leftJoystickState.x,
+                value = _uiState.value.leftJoystickState.valueX,
                 weight = yawWeight,
                 offset = yawOffset,
                 expo = yawExpo,
             )
 
             val throttle = CurveUtils.applyCurve(
-                value = _uiState.value.leftJoystickState.y,
+                value = _uiState.value.leftJoystickState.valueY,
                 weight = throttleWeight,
                 offset = throttleOffset,
                 expo = throttleExpo,

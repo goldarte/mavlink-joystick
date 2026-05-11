@@ -25,6 +25,8 @@ private val INITIAL_SETTINGS_STATE = SettingsState(
     // Joystick visuals
     leftStickSizeFactor = 0.65f,
     rightStickSizeFactor = 0.65f,
+    isLeftJoystickInThrottleMode = true,
+    isRightJoystickInThrottleMode = false,
     showCircularArea = true,
     showSquareArea = true,
     showCircleBoundaries = false,
@@ -75,6 +77,10 @@ class AppSettings(private val dataStore: DataStore<Preferences>) {
                         ?: it.leftStickSizeFactor,
                     rightStickSizeFactor = prefs[AppSettingsKeys.RIGHT_STICK_SIZE_FACTOR]
                         ?: it.rightStickSizeFactor,
+                    isLeftJoystickInThrottleMode = prefs[AppSettingsKeys.IS_LEFT_JOYSTICK_IN_THROTTLE_MODE]
+                        ?: it.isLeftJoystickInThrottleMode,
+                    isRightJoystickInThrottleMode = prefs[AppSettingsKeys.IS_RIGHT_JOYSTICK_IN_THROTTLE_MODE]
+                        ?: it.isRightJoystickInThrottleMode,
                     showCircularArea = prefs[AppSettingsKeys.SHOW_CIRCULAR_AREA]
                         ?: it.showCircularArea,
                     showSquareArea = prefs[AppSettingsKeys.SHOW_SQUARE_AREA] ?: it.showSquareArea,
@@ -148,6 +154,16 @@ class AppSettings(private val dataStore: DataStore<Preferences>) {
     suspend fun setRightStickSizeFactor(value: Float) {
         dataStore.edit { it[AppSettingsKeys.RIGHT_STICK_SIZE_FACTOR] = value }
         _state.update { it.copy(rightStickSizeFactor = value) }
+    }
+
+    suspend fun setLeftJoystickThrottleMode(value: Boolean) {
+        dataStore.edit { it[AppSettingsKeys.IS_LEFT_JOYSTICK_IN_THROTTLE_MODE] = value }
+        _state.update { it.copy(isLeftJoystickInThrottleMode = value) }
+    }
+
+    suspend fun setRightJoystickThrottleMode(value: Boolean) {
+        dataStore.edit { it[AppSettingsKeys.IS_RIGHT_JOYSTICK_IN_THROTTLE_MODE] = value }
+        _state.update { it.copy(isRightJoystickInThrottleMode = value) }
     }
 
     suspend fun setShowCircularArea(value: Boolean) {
@@ -247,6 +263,8 @@ data class SettingsState(
     // Joystick visuals
     val leftStickSizeFactor: Float,
     val rightStickSizeFactor: Float,
+    val isLeftJoystickInThrottleMode: Boolean,
+    val isRightJoystickInThrottleMode: Boolean,
     val showCircularArea: Boolean,
     val showSquareArea: Boolean,
     val showCircleBoundaries: Boolean,
@@ -301,23 +319,16 @@ object AppSettingsKeys {
     // Joystick visuals
     // ─────────────────────────────────────────────
 
-    val LEFT_STICK_SIZE_FACTOR =
-        floatPreferencesKey("left_stick_size_factor")
-
-    val RIGHT_STICK_SIZE_FACTOR =
-        floatPreferencesKey("right_stick_size_factor")
-
-    val SHOW_CIRCULAR_AREA =
-        booleanPreferencesKey("show_circular_area")
-
-    val SHOW_SQUARE_AREA =
-        booleanPreferencesKey("show_square_area")
-
-    val SHOW_CIRCLE_BOUNDARIES =
-        booleanPreferencesKey("show_circle_boundaries")
-
-    val KNOB_COLOR =
-        longPreferencesKey("knob_color")
+    val LEFT_STICK_SIZE_FACTOR = floatPreferencesKey("left_stick_size_factor")
+    val RIGHT_STICK_SIZE_FACTOR = floatPreferencesKey("right_stick_size_factor")
+    val IS_LEFT_JOYSTICK_IN_THROTTLE_MODE =
+        booleanPreferencesKey("IS_LEFT_JOYSTICK_IN_THROTTLE_MODE")
+    val IS_RIGHT_JOYSTICK_IN_THROTTLE_MODE =
+        booleanPreferencesKey("IS_RIGHT_JOYSTICK_IN_THROTTLE_MODE")
+    val SHOW_CIRCULAR_AREA = booleanPreferencesKey("show_circular_area")
+    val SHOW_SQUARE_AREA = booleanPreferencesKey("show_square_area")
+    val SHOW_CIRCLE_BOUNDARIES = booleanPreferencesKey("show_circle_boundaries")
+    val KNOB_COLOR = longPreferencesKey("knob_color")
 
     // ─────────────────────────────────────────────
     // Roll curve
