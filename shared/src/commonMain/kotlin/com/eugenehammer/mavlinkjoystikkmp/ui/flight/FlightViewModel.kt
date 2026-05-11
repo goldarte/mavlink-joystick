@@ -3,8 +3,6 @@ package com.eugenehammer.mavlinkjoystikkmp.ui.flight
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.eugenehammer.mavlinkjoystikkmp.data.AppSettings
-import com.eugenehammer.mavlinkjoystikkmp.mavlink.MavlinkConfig
-import com.eugenehammer.mavlinkjoystikkmp.mavlink.MavlinkEvent
 import com.eugenehammer.mavlinkjoystikkmp.mavlink.MavlinkManager
 import com.eugenehammer.mavlinkjoystikkmp.utils.CurveUtils
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -49,23 +47,19 @@ class FlightViewModel(
     init {
         subscribeOnSettings()
         observeMavlink()
-        viewModelScope.launch { mavlinkManager.start() }
+        mavlinkManager.start()
     }
 
     private fun subscribeOnSettings() {
         viewModelScope.launch {
             appSettings.state.collectLatest { newSettings ->
-                val newConfig = MavlinkConfig(
-                    targetHost = newSettings.host,
-                    targetPort = newSettings.port,
-                    listenPort = newSettings.listenPort,
-                    droneSystemId = newSettings.droneSystemId,
-                    droneComponentId = newSettings.droneComponentId,
-                    autoDetect = newSettings.autoDetect,
-                )
-
                 mavlinkManager.stop()
-                mavlinkManager.updateConfig(newConfig)
+                mavlinkManager.targetHost = newSettings.host
+                mavlinkManager.targetPort = newSettings.port
+                mavlinkManager.listenPort = newSettings.listenPort
+                mavlinkManager.droneSystemId = newSettings.droneSystemId
+                mavlinkManager.droneComponentId = newSettings.droneComponentId
+                mavlinkManager.autoDetect = newSettings.autoDetect
                 mavlinkManager.start()
             }
         }
@@ -73,37 +67,32 @@ class FlightViewModel(
     }
 
     private fun observeMavlink() {
-        viewModelScope.launch {
-            mavlinkManager.state.collect { mavState ->
-                _uiState.update {
-                    it.copy(
-                        armed = mavState.armed,
-                        connected = mavState.connected,
-                        rollDeg = mavState.rollDeg,
-                        pitchDeg = mavState.pitchDeg,
-                        yawHeading = ((mavState.yawDeg % 360f) + 360f) % 360f,
-                        batteryVoltage = mavState.batteryVoltage?.let { voltage -> "${voltage}V" }
-                            ?: "--.-V",
-                        flightMode = mavState.flightMode,
-                        autopilotName = mavState.autopilotName,
-                        connectionStatus = if (mavState.connected) "${mavState.targetHost}:${mavState.targetPort}" else "NO LINK",
-                    )
-                }
+        mavlinkManager.onStateChanged = { armed, connected ->
+            _uiState.update {
+                it.copy(armed = armed, connected = connected)
             }
         }
 
-        viewModelScope.launch {
-            mavlinkManager.events.collect { event ->
-                when (event) {
-                    is MavlinkEvent.StatusText -> {
-                        handleStatusText(event)
-                    }
-
-                    is MavlinkEvent.SerialData -> {
-                        handleSerialData(event)
-                    }
-                }
+        mavlinkManager.onAttitudeReceived = { rollDeg, pitchDeg, yawDeg ->
+            _uiState.update {
+                it.copy(
+                    rollDeg = rollDeg,
+                    pitchDeg = pitchDeg,
+                    yawHeading = ((yawDeg % 360f) + 360f) % 360f
+                )
             }
+        }
+
+        mavlinkManager.onBatteryVoltageReceived = { voltage ->
+            _uiState.update { it.copy(batteryVoltage = "${voltage}V") }
+        }
+
+        mavlinkManager.onFlightModeReceived = { mode ->
+            _uiState.update { it.copy(flightMode = mode) }
+        }
+
+        mavlinkManager.onAutopilotNameReceived = { name ->
+            _uiState.update { it.copy(autopilotName = name) }
         }
     }
 
@@ -133,9 +122,9 @@ class FlightViewModel(
         _uiState.update { it.copy(leftJoystickState = leftJoystickInitialState) }
         viewModelScope.launch {
             if (uiState.value.armed) {
-                mavlinkManager.disarm()
+                mavlinkManager.sendArmCommand(false)
             } else {
-                mavlinkManager.arm()
+                mavlinkManager.sendArmCommand(true)
             }
         }
     }
@@ -143,7 +132,7 @@ class FlightViewModel(
     fun onArmLongClick() {
         _uiState.update { it.copy(leftJoystickState = leftJoystickInitialState) }
         viewModelScope.launch {
-            mavlinkManager.disarm()
+            mavlinkManager.sendArmCommand(false)
         }
     }
 
@@ -186,14 +175,6 @@ class FlightViewModel(
                 )
             }
         }
-    }
-
-    private fun handleStatusText(event: MavlinkEvent.StatusText) {
-        // TODO
-    }
-
-    private fun handleSerialData(event: MavlinkEvent.SerialData) {
-        // TODO
     }
 
     override fun onCleared() {

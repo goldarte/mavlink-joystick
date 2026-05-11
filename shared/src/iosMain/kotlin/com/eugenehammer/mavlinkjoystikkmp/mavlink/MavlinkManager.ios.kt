@@ -1,64 +1,58 @@
 package com.eugenehammer.mavlinkjoystikkmp.mavlink
 
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharedFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asSharedFlow
-import kotlinx.coroutines.flow.asStateFlow
-
 class MavlinkManagerIOS : MavlinkManager {
+    override var targetHost: String = ""
+    override var targetPort: Int = 0
+    override var listenPort: Int = 0
+    override var droneSystemId: Int = 0
+    override var droneComponentId: Int = 0
+    override var autoDetect: Boolean = false
+    override var systemId: Int = 0
+    override var componentId: Int = 0
+    override var onStateChanged: ((armed: Boolean, connected: Boolean) -> Unit)?
+        get() = TODO("Not yet implemented")
+        set(value) {}
+    override var onAttitudeReceived: ((roll: Float, pitch: Float, yaw: Float) -> Unit)?
+        get() = TODO("Not yet implemented")
+        set(value) {}
+    override var onBatteryVoltageReceived: ((voltage: Float) -> Unit)?
+        get() = TODO("Not yet implemented")
+        set(value) {}
+    override var onFlightModeReceived: ((mode: String) -> Unit)?
+        get() = TODO("Not yet implemented")
+        set(value) {}
+    override var onAutopilotNameReceived: ((name: String) -> Unit)?
+        get() = TODO("Not yet implemented")
+        set(value) {}
+    override var onStatustextReceived: ((text: String, severity: Int) -> Unit)?
+        get() = TODO("Not yet implemented")
+        set(value) {}
+    override var onSerialControlReceived: ((data: ByteArray) -> Unit)?
+        get() = TODO("Not yet implemented")
+        set(value) {}
 
-    private val _state =
-
-        MutableStateFlow(
-
-            MavlinkState(),
-
-            )
-
-    override val state: StateFlow<MavlinkState> =
-
-        _state.asStateFlow()
-
-    private val _events =
-
-        MutableSharedFlow<MavlinkEvent>()
-
-    override val events: SharedFlow<MavlinkEvent> =
-
-        _events.asSharedFlow()
-
-    override suspend fun start() {
+    override fun start() {
         TODO("Not yet implemented")
     }
 
-    override suspend fun stop() {
+    override fun stop() {
         TODO("Not yet implemented")
     }
 
-    override suspend fun updateConfig(config: MavlinkConfig) {
+    override fun sendArmCommand(arm: Boolean) {
         TODO("Not yet implemented")
     }
 
-    override suspend fun setChannels(
+    override fun sendSerialControl(text: String) {
+        TODO("Not yet implemented")
+    }
+
+    override fun setChannels(
         roll: Float,
         pitch: Float,
         throttle: Float,
         yaw: Float
     ) {
-        TODO("Not yet implemented")
-    }
-
-    override suspend fun arm() {
-        TODO("Not yet implemented")
-    }
-
-    override suspend fun disarm() {
-        TODO("Not yet implemented")
-    }
-
-    override suspend fun sendSerialControl(text: String) {
         TODO("Not yet implemented")
     }
 }

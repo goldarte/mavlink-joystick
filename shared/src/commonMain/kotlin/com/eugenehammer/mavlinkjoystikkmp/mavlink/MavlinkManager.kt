@@ -1,93 +1,26 @@
 package com.eugenehammer.mavlinkjoystikkmp.mavlink
 
-import kotlinx.coroutines.flow.SharedFlow
-import kotlinx.coroutines.flow.StateFlow
-
 interface MavlinkManager {
+    var targetHost: String
+    var targetPort: Int
+    var listenPort: Int
+    var droneSystemId: Int
+    var droneComponentId: Int
+    var autoDetect: Boolean
+    var systemId: Int      // GCS system ID
+    var componentId: Int    // GCS component ID
 
-    val state: StateFlow<MavlinkState>
+    var onStateChanged: ((armed: Boolean, connected: Boolean) -> Unit)?
+    var onAttitudeReceived: ((roll: Float, pitch: Float, yaw: Float) -> Unit)?
+    var onBatteryVoltageReceived: ((voltage: Float) -> Unit)?
+    var onFlightModeReceived: ((mode: String) -> Unit)?
+    var onAutopilotNameReceived: ((name: String) -> Unit)?
+    var onStatustextReceived: ((text: String, severity: Int) -> Unit)?
+    var onSerialControlReceived: ((data: ByteArray) -> Unit)?
 
-    val events: SharedFlow<MavlinkEvent>
-
-    suspend fun start()
-
-    suspend fun stop()
-
-    suspend fun updateConfig(
-
-        config: MavlinkConfig,
-
-        )
-
-    suspend fun setChannels(
-
-        roll: Float,
-
-        pitch: Float,
-
-        throttle: Float,
-
-        yaw: Float,
-
-        )
-
-    suspend fun arm()
-
-    suspend fun disarm()
-
-    suspend fun sendSerialControl(
-
-        text: String,
-
-        )
-
+    fun start()
+    fun stop()
+    fun sendArmCommand(arm: Boolean)
+    fun sendSerialControl(text: String)
+    fun setChannels(roll: Float, pitch: Float, throttle: Float, yaw: Float)
 }
-
-data class MavlinkState(
-    val armed: Boolean = false,
-    val connected: Boolean = false,
-
-    val rollDeg: Float = 0f,
-    val pitchDeg: Float = 0f,
-    val yawDeg: Float = 0f,
-
-    val batteryVoltage: Float? = null,
-
-    val flightMode: String = "---",
-    val autopilotName: String = "---",
-
-    val targetHost: String = "",
-    val targetPort: Int = 0,
-)
-
-sealed interface MavlinkEvent {
-
-    data class StatusText(
-        val text: String,
-        val severity: Int,
-    ) : MavlinkEvent
-
-    data class SerialData(
-        val data: ByteArray,
-    ) : MavlinkEvent
-}
-
-data class MavlinkConfig(
-
-    val targetHost: String,
-
-    val targetPort: Int,
-
-    val listenPort: Int,
-
-    val droneSystemId: Int,
-
-    val droneComponentId: Int,
-
-    val autoDetect: Boolean,
-
-    val systemId: Int = 255,
-
-    val componentId: Int = 190,
-
-    )
