@@ -27,6 +27,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
@@ -240,15 +241,11 @@ fun FlightScreen(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-
+                val connectionStatus = state.connectionStatus?.let { "● $it" } ?: "○ NO LINK"
                 Text(
-                    text = if (state.connected) {
-                        "● ${state.connectionStatus}"
-                    } else {
-                        "○ NO LINK"
-                    },
+                    text = connectionStatus,
                     modifier = Modifier.weight(1f),
-                    color = if (state.connected) {
+                    color = if (state.connectionStatus != null) {
                         Color(0xFF69F0AE)
                     } else {
                         Color(0xFFFF5252)
@@ -256,6 +253,7 @@ fun FlightScreen(
                     fontSize = 10.sp,
                     fontFamily = FontFamily.Monospace,
                     maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
 
                 TextButton(
@@ -265,7 +263,6 @@ fun FlightScreen(
                         vertical = 0.dp,
                     ),
                 ) {
-
                     Text(
                         text = "⚙ SETTINGS",
                         color = Color(0xFFAAAAAA),

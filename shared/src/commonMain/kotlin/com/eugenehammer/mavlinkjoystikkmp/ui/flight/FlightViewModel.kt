@@ -29,11 +29,10 @@ class FlightViewModel(
     private val _uiState = MutableStateFlow(
         FlightScreenState(
             armed = false,
-            connected = false,
             batteryVoltage = "--.-V",
             flightMode = "---",
             autopilotName = "---",
-            connectionStatus = "NO LINK",
+            connectionStatus = null,
             rollDeg = 0f,
             pitchDeg = 0f,
             yawHeading = 0f,
@@ -87,7 +86,10 @@ class FlightViewModel(
     private fun observeMavlink() {
         mavlinkManager.onStateChanged = { armed, connected ->
             _uiState.update {
-                it.copy(armed = armed, connected = connected)
+                it.copy(
+                    armed = armed,
+                    connectionStatus = "${mavlinkManager.targetHost}:${mavlinkManager.targetPort}".takeIf { connected }
+                )
             }
         }
 
