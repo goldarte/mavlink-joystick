@@ -18,6 +18,7 @@ koin = "4.2.1"
 multiplatform-nav3-ui = "1.1.1"
 compose-multiplatform-lifecycle = "2.10.0"
 kotlinxSerializationCore = "1.11.0"
+datastore = "1.2.1"
 
 [libraries]
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
@@ -47,10 +48,14 @@ navigation3-lifecycle-viewmodel = { module = "org.jetbrains.androidx.lifecycle:l
 
 android-mavlink = { group = "io.dronefleet.mavlink", name = "mavlink", version.ref = "mavlink" }
 
+# Save data from settings - "Shared Preferences"
+datastore = { module = "androidx.datastore:datastore", version.ref = "datastore" }
+datastore-preferences = { module = "androidx.datastore:datastore-preferences", version.ref = "datastore" }
+
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }
 androidMultiplatformLibrary = { id = "com.android.kotlin.multiplatform.library", version.ref = "agp" }
 composeMultiplatform = { id = "org.jetbrains.compose", version.ref = "composeMultiplatform" }
 composeCompiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 kotlinMultiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
-kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin"}
+kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }

@@ -50,13 +50,20 @@ kotlin {
                 implementation(libs.compose.ui)
                 implementation(libs.compose.components.resources)
                 implementation(libs.compose.uiToolingPreview)
+
                 implementation(libs.androidx.lifecycle.viewmodelCompose)
                 implementation(libs.androidx.lifecycle.runtimeCompose)
+
                 implementation(libs.koin.core)
                 implementation(libs.koin.compose.viewmodel)
+
                 implementation(libs.navigation3.ui)
                 implementation(libs.navigation3.lifecycle.viewmodel)
+
                 implementation(libs.kotlin.serialization.core)
+
+                implementation(libs.datastore)
+                implementation(libs.datastore.preferences)
             }
         }
     }

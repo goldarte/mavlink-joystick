@@ -48,7 +48,7 @@ import java.net.InetAddress
 import kotlin.math.asin
 import kotlin.math.atan2
 
-class AndroidMavlinkClient(context: Context) : MavlinkManager {
+class AndroidMavlinkManager(context: Context) : MavlinkManager {
 
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
