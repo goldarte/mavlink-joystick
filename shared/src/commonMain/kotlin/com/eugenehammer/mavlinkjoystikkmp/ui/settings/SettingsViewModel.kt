@@ -14,6 +14,11 @@ import kotlinx.coroutines.launch
 class SettingsViewModel(
     private val appSettings: AppSettings,
 ) : ViewModel() {
+    private val defaultCurveParams = SettingsScreenState.StickCurveSettingsState.CurveParams(
+        weight = 1f,
+        offset = 0f,
+        expo = 0f
+    )
     private val _state = MutableStateFlow(
         SettingsScreenState(
             selectedTab = SettingsScreenState.SettingsTab.Connection,
@@ -34,6 +39,13 @@ class SettingsViewModel(
                 showSquareArea = true,
                 showCircleBoundaries = true,
                 knobColor = Color.Cyan
+            ),
+            curveSettingsState = SettingsScreenState.StickCurveSettingsState(
+                selectedAxis = SettingsScreenState.StickCurveSettingsState.StickAxis.Roll,
+                rollParams = defaultCurveParams,
+                pitchParams = defaultCurveParams,
+                yawParams = defaultCurveParams,
+                throttleParams = defaultCurveParams
             )
         )
     )
@@ -61,6 +73,28 @@ class SettingsViewModel(
                             showSquareArea = settingsState.showSquareArea,
                             showCircleBoundaries = settingsState.showCircleBoundaries,
                             knobColor = Color(settingsState.knobColor)
+                        ),
+                        curveSettingsState = _state.value.curveSettingsState.copy(
+                            rollParams = SettingsScreenState.StickCurveSettingsState.CurveParams(
+                                weight = settingsState.rollWeight,
+                                offset = settingsState.rollOffset,
+                                expo = settingsState.rollExpo
+                            ),
+                            pitchParams = SettingsScreenState.StickCurveSettingsState.CurveParams(
+                                weight = settingsState.pitchWeight,
+                                offset = settingsState.pitchOffset,
+                                expo = settingsState.pitchExpo
+                            ),
+                            yawParams = SettingsScreenState.StickCurveSettingsState.CurveParams(
+                                weight = settingsState.yawWeight,
+                                offset = settingsState.yawOffset,
+                                expo = settingsState.yawExpo
+                            ),
+                            throttleParams = SettingsScreenState.StickCurveSettingsState.CurveParams(
+                                weight = settingsState.throttleWeight,
+                                offset = settingsState.throttleOffset,
+                                expo = settingsState.throttleExpo
+                            )
                         )
                     )
                 }
@@ -158,6 +192,85 @@ class SettingsViewModel(
     fun onKnobColorChange(color: Color) {
         viewModelScope.launch {
             appSettings.setKnobColor(color.toArgb())
+        }
+    }
+
+    fun onCurveParamsAxisSelected(axis: SettingsScreenState.StickCurveSettingsState.StickAxis) {
+        _state.update { it.copy(curveSettingsState = it.curveSettingsState.copy(selectedAxis = axis)) }
+    }
+
+    fun onWeightChange(value: Float) {
+        _state.update { it.copy(curveSettingsState = it.curveSettingsState.copyWeightForAxis(value)) }
+    }
+
+    fun onWeightChangeFinished() {
+        viewModelScope.launch { saveWeightForAxis() }
+    }
+
+    fun onOffsetChange(value: Float) {
+        _state.update { it.copy(curveSettingsState = it.curveSettingsState.copyOffsetForAxis(value)) }
+    }
+
+    fun onOffsetChangeFinished() {
+        viewModelScope.launch { saveOffsetForAxis() }
+    }
+
+    fun onExpoChange(value: Float) {
+        _state.update { it.copy(curveSettingsState = it.curveSettingsState.copyExpoForAxis(value)) }
+    }
+
+    fun onExpoChangeFinished() {
+        viewModelScope.launch { saveExpoForAxis() }
+    }
+
+    private fun SettingsScreenState.StickCurveSettingsState.copyWeightForAxis(value: Float): SettingsScreenState.StickCurveSettingsState =
+        when (selectedAxis) {
+            SettingsScreenState.StickCurveSettingsState.StickAxis.Roll -> copy(rollParams = rollParams.copy(weight = value))
+            SettingsScreenState.StickCurveSettingsState.StickAxis.Pitch -> copy(pitchParams = pitchParams.copy(weight = value))
+            SettingsScreenState.StickCurveSettingsState.StickAxis.Yaw -> copy(yawParams = yawParams.copy(weight = value))
+            SettingsScreenState.StickCurveSettingsState.StickAxis.Throttle -> copy(throttleParams = throttleParams.copy(weight = value))
+        }
+
+    private suspend fun saveWeightForAxis() {
+        when (_state.value.curveSettingsState.selectedAxis) {
+            SettingsScreenState.StickCurveSettingsState.StickAxis.Roll -> appSettings.setRollWeight(_state.value.curveSettingsState.rollParams.weight)
+            SettingsScreenState.StickCurveSettingsState.StickAxis.Pitch -> appSettings.setPitchWeight(_state.value.curveSettingsState.pitchParams.weight)
+            SettingsScreenState.StickCurveSettingsState.StickAxis.Yaw -> appSettings.setYawWeight(_state.value.curveSettingsState.yawParams.weight)
+            SettingsScreenState.StickCurveSettingsState.StickAxis.Throttle -> appSettings.setThrottleWeight(_state.value.curveSettingsState.throttleParams.weight)
+        }
+    }
+
+    private fun SettingsScreenState.StickCurveSettingsState.copyOffsetForAxis(value: Float): SettingsScreenState.StickCurveSettingsState =
+        when (selectedAxis) {
+            SettingsScreenState.StickCurveSettingsState.StickAxis.Roll -> copy(rollParams = rollParams.copy(offset = value))
+            SettingsScreenState.StickCurveSettingsState.StickAxis.Pitch -> copy(pitchParams = pitchParams.copy(offset = value))
+            SettingsScreenState.StickCurveSettingsState.StickAxis.Yaw -> copy(yawParams = yawParams.copy(offset = value))
+            SettingsScreenState.StickCurveSettingsState.StickAxis.Throttle -> copy(throttleParams = throttleParams.copy(offset = value))
+        }
+
+    private suspend fun saveOffsetForAxis() {
+        when (_state.value.curveSettingsState.selectedAxis) {
+            SettingsScreenState.StickCurveSettingsState.StickAxis.Roll -> appSettings.setRollOffset(_state.value.curveSettingsState.rollParams.offset)
+            SettingsScreenState.StickCurveSettingsState.StickAxis.Pitch -> appSettings.setPitchOffset(_state.value.curveSettingsState.pitchParams.offset)
+            SettingsScreenState.StickCurveSettingsState.StickAxis.Yaw -> appSettings.setYawOffset(_state.value.curveSettingsState.yawParams.offset)
+            SettingsScreenState.StickCurveSettingsState.StickAxis.Throttle -> appSettings.setThrottleOffset(_state.value.curveSettingsState.throttleParams.offset)
+        }
+    }
+
+    private fun SettingsScreenState.StickCurveSettingsState.copyExpoForAxis(value: Float): SettingsScreenState.StickCurveSettingsState =
+        when (selectedAxis) {
+            SettingsScreenState.StickCurveSettingsState.StickAxis.Roll -> copy(rollParams = rollParams.copy(expo = value))
+            SettingsScreenState.StickCurveSettingsState.StickAxis.Pitch -> copy(pitchParams = pitchParams.copy(expo = value))
+            SettingsScreenState.StickCurveSettingsState.StickAxis.Yaw -> copy(yawParams = yawParams.copy(expo = value))
+            SettingsScreenState.StickCurveSettingsState.StickAxis.Throttle -> copy(throttleParams = throttleParams.copy(expo = value))
+        }
+
+    private suspend fun saveExpoForAxis() {
+        when (_state.value.curveSettingsState.selectedAxis) {
+            SettingsScreenState.StickCurveSettingsState.StickAxis.Roll -> appSettings.setRollExpo(_state.value.curveSettingsState.rollParams.expo)
+            SettingsScreenState.StickCurveSettingsState.StickAxis.Pitch -> appSettings.setPitchExpo(_state.value.curveSettingsState.pitchParams.expo)
+            SettingsScreenState.StickCurveSettingsState.StickAxis.Yaw -> appSettings.setYawExpo(_state.value.curveSettingsState.yawParams.expo)
+            SettingsScreenState.StickCurveSettingsState.StickAxis.Throttle -> appSettings.setThrottleExpo(_state.value.curveSettingsState.throttleParams.expo)
         }
     }
 }

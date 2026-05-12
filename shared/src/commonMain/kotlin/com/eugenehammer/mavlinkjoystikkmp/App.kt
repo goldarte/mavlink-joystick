@@ -13,7 +13,7 @@ import androidx.savedstate.serialization.SavedStateConfiguration
 import com.eugenehammer.mavlinkjoystikkmp.di.platformModule
 import com.eugenehammer.mavlinkjoystikkmp.di.sharedModule
 import com.eugenehammer.mavlinkjoystikkmp.ui.flight.compose.FlightScreen
-import com.eugenehammer.mavlinkjoystikkmp.ui.settings.SettingsScreen
+import com.eugenehammer.mavlinkjoystikkmp.ui.settings.compose.SettingsScreen
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.modules.SerializersModule
 import kotlinx.serialization.modules.polymorphic

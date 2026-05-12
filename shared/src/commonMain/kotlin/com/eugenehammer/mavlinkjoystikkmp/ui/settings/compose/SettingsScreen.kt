@@ -1,4 +1,4 @@
-package com.eugenehammer.mavlinkjoystikkmp.ui.settings
+package com.eugenehammer.mavlinkjoystikkmp.ui.settings.compose
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -35,9 +35,8 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.eugenehammer.mavlinkjoystikkmp.ui.settings.compose.ConnectionSettingsScreen
-import com.eugenehammer.mavlinkjoystikkmp.ui.settings.compose.StickAppearanceSettingsScreen
-import com.eugenehammer.mavlinkjoystikkmp.ui.settings.compose.StickSizeSettingsScreen
+import com.eugenehammer.mavlinkjoystikkmp.ui.settings.SettingsScreenState
+import com.eugenehammer.mavlinkjoystikkmp.ui.settings.SettingsViewModel
 import org.koin.compose.viewmodel.koinViewModel
 
 private val BackgroundColor = Color(0xFF0D0D0D)
@@ -120,11 +119,19 @@ fun SettingsScreen(
                     }
 
                     SettingsScreenState.SettingsTab.SticksCurve -> {
-                        SettingsPlaceholder("Sticks Curve")
+                        StickCurveSettingsScreen(
+                            state = state.curveSettingsState,
+                            onAxisSelected = vm::onCurveParamsAxisSelected,
+                            onWeightChange = vm::onWeightChange,
+                            onWeightChangeFinished = vm::onWeightChangeFinished,
+                            onOffsetChange = vm::onOffsetChange,
+                            onOffsetChangeFinished = vm::onOffsetChangeFinished,
+                            onExpoChange = vm::onExpoChange,
+                            onExpoChangeFinished = vm::onExpoChangeFinished
+                        )
                     }
 
                     SettingsScreenState.SettingsTab.MavlinkConsole -> {
-                        SettingsPlaceholder("MAVLink Console")
                     }
                 }
             }
@@ -295,22 +302,4 @@ private fun SidebarItem(
         fontFamily = FontFamily.Monospace,
         style = MaterialTheme.typography.bodySmall,
     )
-}
-
-@Composable
-private fun SettingsPlaceholder(
-    title: String,
-) {
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center,
-    ) {
-
-        Text(
-            text = title,
-            color = Color.White,
-            fontFamily = FontFamily.Monospace,
-            style = MaterialTheme.typography.headlineSmall,
-        )
-    }
 }

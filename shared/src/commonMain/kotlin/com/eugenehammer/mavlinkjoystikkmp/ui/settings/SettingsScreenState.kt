@@ -9,6 +9,7 @@ data class SettingsScreenState(
     val connectionSettingsState: ConnectionSettingsState,
     val stickSizeState: StickSizeState,
     val stickAppearanceState: StickAppearanceState,
+    val curveSettingsState: StickCurveSettingsState,
 ) {
     enum class SettingsTab(
         val title: String,
@@ -40,4 +41,25 @@ data class SettingsScreenState(
         val showCircleBoundaries: Boolean,
         val knobColor: Color,
     )
+
+    data class StickCurveSettingsState(
+        val selectedAxis: StickAxis,
+        val rollParams: CurveParams,
+        val pitchParams: CurveParams,
+        val yawParams: CurveParams,
+        val throttleParams: CurveParams
+    ) {
+        enum class StickAxis {
+            Roll,
+            Pitch,
+            Yaw,
+            Throttle,
+        }
+
+        data class CurveParams(
+            val weight: Float,
+            val offset: Float,
+            val expo: Float,
+        )
+    }
 }
