@@ -1,6 +1,10 @@
 package com.eugenehammer.mavlinkjoystikkmp.mavlink
 
+import kotlinx.coroutines.flow.Flow
+
 interface MavlinkManager {
+    val consoleFlow: Flow<String>
+
     var targetHost: String
     var targetPort: Int
     var listenPort: Int
@@ -16,7 +20,6 @@ interface MavlinkManager {
     var onFlightModeReceived: ((mode: String) -> Unit)?
     var onAutopilotNameReceived: ((name: String) -> Unit)?
     var onStatustextReceived: ((text: String, severity: Int) -> Unit)?
-    var onSerialControlReceived: ((data: ByteArray) -> Unit)?
 
     fun start()
     fun stop()

@@ -132,6 +132,11 @@ fun SettingsScreen(
                     }
 
                     SettingsScreenState.SettingsTab.MavlinkConsole -> {
+                        ConsoleScreen(
+                            state = state.consoleState,
+                            onInputChange = vm::onConsoleInputChange,
+                            onSend = vm::sendConsoleMessage
+                        )
                     }
                 }
             }

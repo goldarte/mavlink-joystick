@@ -28,6 +28,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import java.io.ByteArrayOutputStream
 import java.io.IOException
@@ -47,6 +48,7 @@ import java.util.concurrent.atomic.AtomicBoolean
  * Defaults: host=192.168.4.1 (ESP telemetry AP), port=14550 (GCS port).
  */
 class AndroidMavlinkManager(private val context: Context?) : MavlinkManager {
+    override val consoleFlow: MutableStateFlow<String> = MutableStateFlow("")
     override var targetHost: String = "255.255.255.255"
     override var targetPort: Int = 14550
     override var listenPort: Int = 14550
@@ -67,7 +69,6 @@ class AndroidMavlinkManager(private val context: Context?) : MavlinkManager {
     override var onFlightModeReceived: ((mode: String) -> Unit)? = null
     override var onAutopilotNameReceived: ((name: String) -> Unit)? = null
     override var onStatustextReceived: ((text: String, severity: Int) -> Unit)? = null
-    override var onSerialControlReceived: ((data: ByteArray) -> Unit)? = null
 
     // ── Drone ID Logic ───────────────────────────────────────────────────────
     internal var inited: Boolean = false
@@ -218,6 +219,7 @@ class AndroidMavlinkManager(private val context: Context?) : MavlinkManager {
                 offset += count
             }
         }
+        consoleFlow.value += "> $text\n"
     }
 
     // ── Private helpers ──────────────────────────────────────────────────────
@@ -375,7 +377,7 @@ class AndroidMavlinkManager(private val context: Context?) : MavlinkManager {
                         is SerialControl -> {
                             Log.v("MavlinkManager", "SerialControl: ${payload.count()} bytes")
                             val data = payload.data().copyOfRange(0, payload.count())
-                            onSerialControlReceived?.invoke(data)
+                            consoleFlow.value += String(data, Charsets.UTF_8)
                         }
                     }
                 } catch (e: Exception) {
