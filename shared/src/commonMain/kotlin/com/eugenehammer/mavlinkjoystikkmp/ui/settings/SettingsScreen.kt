@@ -36,6 +36,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.eugenehammer.mavlinkjoystikkmp.ui.settings.compose.ConnectionSettingsScreen
+import com.eugenehammer.mavlinkjoystikkmp.ui.settings.compose.StickAppearanceSettingsScreen
 import com.eugenehammer.mavlinkjoystikkmp.ui.settings.compose.StickSizeSettingsScreen
 import org.koin.compose.viewmodel.koinViewModel
 
@@ -109,7 +110,13 @@ fun SettingsScreen(
                     }
 
                     SettingsScreenState.SettingsTab.SticksAppearance -> {
-                        SettingsPlaceholder("Sticks Appearance")
+                        StickAppearanceSettingsScreen(
+                            state = state.stickAppearanceState,
+                            onShowCircularAreaChange = vm::onShowCircularAreaChange,
+                            onShowSquareAreaChange = vm::onShowSquareAreaChange,
+                            onShowCircleBoundariesChange = vm::onShowCircleBoundariesChange,
+                            onKnobColorChange = vm::onKnobColorChange
+                        )
                     }
 
                     SettingsScreenState.SettingsTab.SticksCurve -> {

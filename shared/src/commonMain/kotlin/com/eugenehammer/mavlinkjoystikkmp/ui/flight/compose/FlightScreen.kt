@@ -70,7 +70,6 @@ fun FlightScreen(
         ) {
 
             Joystick(
-                modifier = Modifier.fillMaxSize(),
                 state = state.leftJoystickState,
                 onChanged = vm::onLeftStickChanged,
             )
@@ -284,7 +283,6 @@ fun FlightScreen(
         ) {
 
             Joystick(
-                modifier = Modifier.fillMaxSize(),
                 state = state.rightJoystickState,
                 onChanged = vm::onRightStickChanged,
             )

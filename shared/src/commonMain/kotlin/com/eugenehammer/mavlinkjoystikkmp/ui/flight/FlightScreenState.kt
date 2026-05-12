@@ -1,5 +1,7 @@
 package com.eugenehammer.mavlinkjoystikkmp.ui.flight
 
+import androidx.compose.ui.graphics.Color
+
 data class FlightScreenState(
     val armed: Boolean,
 
@@ -23,6 +25,7 @@ data class FlightScreenState(
         val showSquareArea: Boolean,
         val showCircleBoundaries: Boolean,
         val stickSizeFactor: Float,
+        val knobColor: Color,
     )
 }
 

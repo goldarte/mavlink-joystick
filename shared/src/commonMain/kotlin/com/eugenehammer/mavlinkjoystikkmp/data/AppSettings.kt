@@ -6,7 +6,6 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
-import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -30,7 +29,7 @@ private val INITIAL_SETTINGS_STATE = SettingsState(
     showCircularArea = true,
     showSquareArea = true,
     showCircleBoundaries = false,
-    knobColor = 0xFFF44336,
+    knobColor = -769226,
 
     // Roll curve
     rollWeight = 1.0f,
@@ -181,7 +180,7 @@ class AppSettings(private val dataStore: DataStore<Preferences>) {
         _state.update { it.copy(showCircleBoundaries = value) }
     }
 
-    suspend fun setKnobColor(value: Long) {
+    suspend fun setKnobColor(value: Int) {
         dataStore.edit { it[AppSettingsKeys.KNOB_COLOR] = value }
         _state.update { it.copy(knobColor = value) }
     }
@@ -268,7 +267,7 @@ data class SettingsState(
     val showCircularArea: Boolean,
     val showSquareArea: Boolean,
     val showCircleBoundaries: Boolean,
-    val knobColor: Long,
+    val knobColor: Int,
 
     // Roll curve
     val rollWeight: Float,
@@ -328,7 +327,7 @@ object AppSettingsKeys {
     val SHOW_CIRCULAR_AREA = booleanPreferencesKey("show_circular_area")
     val SHOW_SQUARE_AREA = booleanPreferencesKey("show_square_area")
     val SHOW_CIRCLE_BOUNDARIES = booleanPreferencesKey("show_circle_boundaries")
-    val KNOB_COLOR = longPreferencesKey("knob_color")
+    val KNOB_COLOR = intPreferencesKey("knob_color")
 
     // ─────────────────────────────────────────────
     // Roll curve

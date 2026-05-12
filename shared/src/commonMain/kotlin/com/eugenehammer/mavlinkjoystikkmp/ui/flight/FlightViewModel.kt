@@ -1,5 +1,6 @@
 package com.eugenehammer.mavlinkjoystikkmp.ui.flight
 
+import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.eugenehammer.mavlinkjoystikkmp.data.AppSettings
@@ -26,6 +27,7 @@ class FlightViewModel(
         showSquareArea = true,
         showCircleBoundaries = true,
         stickSizeFactor = 0.65f,
+        knobColor = Color(0xFFFF5C8D),
     )
     private val _uiState = MutableStateFlow(
         FlightScreenState(
@@ -62,14 +64,16 @@ class FlightViewModel(
                             showCircularArea = newSettings.showCircularArea,
                             showSquareArea = newSettings.showSquareArea,
                             showCircleBoundaries = newSettings.showCircleBoundaries,
-                            stickSizeFactor = newSettings.leftStickSizeFactor
+                            stickSizeFactor = newSettings.leftStickSizeFactor,
+                            knobColor = Color(newSettings.knobColor)
                         ),
                         rightJoystickState = it.rightJoystickState.copy(
                             isThrottleMode = newSettings.isRightJoystickInThrottleMode,
                             showCircularArea = newSettings.showCircularArea,
                             showSquareArea = newSettings.showSquareArea,
                             showCircleBoundaries = newSettings.showCircleBoundaries,
-                            stickSizeFactor = newSettings.rightStickSizeFactor
+                            stickSizeFactor = newSettings.rightStickSizeFactor,
+                            knobColor = Color(newSettings.knobColor)
                         )
                     )
                 }

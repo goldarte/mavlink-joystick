@@ -22,8 +22,6 @@ import kotlin.math.sqrt
 fun Joystick(
     state: FlightScreenState.JoystickState,
     onChanged: (Float, Float) -> Unit,
-    modifier: Modifier = Modifier,
-    knobColor: Color = Color(0xFFFF5C8D),
 ) {
     var canvasWidth = 0f
     var canvasHeight = 0f
@@ -33,7 +31,7 @@ fun Joystick(
     }
 
     Canvas(
-        modifier = modifier
+        modifier = Modifier
             .aspectRatio(1f)
             .onSizeChanged {
                 canvasWidth = it.width.toFloat()
@@ -183,7 +181,7 @@ fun Joystick(
         drawCircle(
             brush = Brush.radialGradient(
                 colors = listOf(
-                    knobColor.copy(alpha = 0.33f),
+                    state.knobColor.copy(alpha = 0.33f),
                     Color.Transparent,
                 ),
                 center = knobOffset,
@@ -196,8 +194,8 @@ fun Joystick(
         drawCircle(
             brush = Brush.radialGradient(
                 colors = listOf(
-                    knobColor,
-                    knobColor.copy(alpha = 0.8f),
+                    state.knobColor,
+                    state.knobColor.copy(alpha = 0.8f),
                 ),
                 center = Offset(
                     knobOffset.x,

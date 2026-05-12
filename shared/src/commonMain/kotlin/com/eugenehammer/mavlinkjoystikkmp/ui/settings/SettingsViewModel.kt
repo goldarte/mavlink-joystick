@@ -1,5 +1,7 @@
 package com.eugenehammer.mavlinkjoystikkmp.ui.settings
 
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.eugenehammer.mavlinkjoystikkmp.data.AppSettings
@@ -26,6 +28,12 @@ class SettingsViewModel(
             stickSizeState = SettingsScreenState.StickSizeState(
                 leftFactor = 0.65f,
                 rightFactor = 0.65f
+            ),
+            stickAppearanceState = SettingsScreenState.StickAppearanceState(
+                showCircularArea = true,
+                showSquareArea = true,
+                showCircleBoundaries = true,
+                knobColor = Color.Cyan
             )
         )
     )
@@ -47,6 +55,12 @@ class SettingsViewModel(
                         stickSizeState = SettingsScreenState.StickSizeState(
                             leftFactor = settingsState.leftStickSizeFactor,
                             rightFactor = settingsState.rightStickSizeFactor
+                        ),
+                        stickAppearanceState = SettingsScreenState.StickAppearanceState(
+                            showCircularArea = settingsState.showCircularArea,
+                            showSquareArea = settingsState.showSquareArea,
+                            showCircleBoundaries = settingsState.showCircleBoundaries,
+                            knobColor = Color(settingsState.knobColor)
                         )
                     )
                 }
@@ -120,6 +134,30 @@ class SettingsViewModel(
     fun onRightStickFactorDragEnded() {
         viewModelScope.launch {
             appSettings.setRightStickSizeFactor(_state.value.stickSizeState.rightFactor)
+        }
+    }
+
+    fun onShowCircularAreaChange() {
+        viewModelScope.launch {
+            appSettings.setShowCircularArea(!_state.value.stickAppearanceState.showCircularArea)
+        }
+    }
+
+    fun onShowSquareAreaChange() {
+        viewModelScope.launch {
+            appSettings.setShowSquareArea(!_state.value.stickAppearanceState.showSquareArea)
+        }
+    }
+
+    fun onShowCircleBoundariesChange() {
+        viewModelScope.launch {
+            appSettings.setShowCircleBoundaries(!_state.value.stickAppearanceState.showCircleBoundaries)
+        }
+    }
+
+    fun onKnobColorChange(color: Color) {
+        viewModelScope.launch {
+            appSettings.setKnobColor(color.toArgb())
         }
     }
 }
