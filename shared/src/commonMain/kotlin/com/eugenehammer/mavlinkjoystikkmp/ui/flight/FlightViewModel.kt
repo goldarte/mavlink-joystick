@@ -25,6 +25,7 @@ class FlightViewModel(
         showCircularArea = true,
         showSquareArea = true,
         showCircleBoundaries = true,
+        stickSizeFactor = 0.65f,
     )
     private val _uiState = MutableStateFlow(
         FlightScreenState(
@@ -60,13 +61,15 @@ class FlightViewModel(
                             isThrottleMode = newSettings.isLeftJoystickInThrottleMode,
                             showCircularArea = newSettings.showCircularArea,
                             showSquareArea = newSettings.showSquareArea,
-                            showCircleBoundaries = newSettings.showCircleBoundaries
+                            showCircleBoundaries = newSettings.showCircleBoundaries,
+                            stickSizeFactor = newSettings.leftStickSizeFactor
                         ),
                         rightJoystickState = it.rightJoystickState.copy(
                             isThrottleMode = newSettings.isRightJoystickInThrottleMode,
                             showCircularArea = newSettings.showCircularArea,
                             showSquareArea = newSettings.showSquareArea,
-                            showCircleBoundaries = newSettings.showCircleBoundaries
+                            showCircleBoundaries = newSettings.showCircleBoundaries,
+                            stickSizeFactor = newSettings.rightStickSizeFactor
                         )
                     )
                 }

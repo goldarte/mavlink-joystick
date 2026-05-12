@@ -24,13 +24,12 @@ fun Joystick(
     onChanged: (Float, Float) -> Unit,
     modifier: Modifier = Modifier,
     knobColor: Color = Color(0xFFFF5C8D),
-    stickSizeFactor: Float = 0.65f,
 ) {
     var canvasWidth = 0f
     var canvasHeight = 0f
 
-    val coercedStickSizeFactor = remember(stickSizeFactor) {
-        stickSizeFactor.coerceIn(0.25f, 1f)
+    val coercedStickSizeFactor = remember(state.stickSizeFactor) {
+        state.stickSizeFactor.coerceIn(0.25f, 1f)
     }
 
     Canvas(
@@ -80,9 +79,7 @@ fun Joystick(
         val cx = size.width / 2f
         val cy = size.height / 2f
 
-        val radius = (min(size.width, size.height) / 2f) *
-                0.88f *
-                coercedStickSizeFactor
+        val radius = (min(size.width, size.height) / 2f) * 0.88f * coercedStickSizeFactor
 
         val knobRadius = radius * 0.22f
 

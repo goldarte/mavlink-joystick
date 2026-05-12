@@ -36,6 +36,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.eugenehammer.mavlinkjoystikkmp.ui.settings.compose.ConnectionSettingsScreen
+import com.eugenehammer.mavlinkjoystikkmp.ui.settings.compose.StickSizeSettingsScreen
 import org.koin.compose.viewmodel.koinViewModel
 
 private val BackgroundColor = Color(0xFF0D0D0D)
@@ -98,7 +99,13 @@ fun SettingsScreen(
                     }
 
                     SettingsScreenState.SettingsTab.SticksSize -> {
-                        SettingsPlaceholder("Sticks Size")
+                        StickSizeSettingsScreen(
+                            state = state.stickSizeState,
+                            onLeftStickFactorChanged = vm::onLeftStickFactorChanged,
+                            onLeftStickFactorDragEnded = vm::onLeftStickFactorDragEnded,
+                            onRightStickFactorChanged = vm::onRightStickFactorChanged,
+                            onRightStickFactorDragEnded = vm::onRightStickFactorDragEnded
+                        )
                     }
 
                     SettingsScreenState.SettingsTab.SticksAppearance -> {

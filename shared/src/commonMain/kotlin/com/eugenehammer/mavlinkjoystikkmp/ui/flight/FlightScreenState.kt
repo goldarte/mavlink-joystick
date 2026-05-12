@@ -22,6 +22,7 @@ data class FlightScreenState(
         val showCircularArea: Boolean,
         val showSquareArea: Boolean,
         val showCircleBoundaries: Boolean,
+        val stickSizeFactor: Float,
     )
 }
 

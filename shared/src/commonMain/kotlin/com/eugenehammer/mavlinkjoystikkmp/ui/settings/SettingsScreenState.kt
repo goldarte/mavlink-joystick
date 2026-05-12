@@ -6,6 +6,7 @@ import androidx.compose.runtime.Immutable
 data class SettingsScreenState(
     val selectedTab: SettingsTab,
     val connectionSettingsState: ConnectionSettingsState,
+    val stickSizeState: StickSizeState,
 ) {
     enum class SettingsTab(
         val title: String,
@@ -24,5 +25,10 @@ data class SettingsScreenState(
         val listenPort: String,
         val droneSystemId: String,
         val droneComponentId: String,
+    )
+
+    data class StickSizeState(
+        val leftFactor: Float,
+        val rightFactor: Float,
     )
 }

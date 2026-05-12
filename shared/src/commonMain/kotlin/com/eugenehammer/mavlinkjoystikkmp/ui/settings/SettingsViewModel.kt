@@ -22,6 +22,10 @@ class SettingsViewModel(
                 listenPort = "",
                 droneSystemId = "1",
                 droneComponentId = "1"
+            ),
+            stickSizeState = SettingsScreenState.StickSizeState(
+                leftFactor = 0.65f,
+                rightFactor = 0.65f
             )
         )
     )
@@ -39,6 +43,10 @@ class SettingsViewModel(
                             listenPort = settingsState.listenPort.toString(),
                             droneSystemId = settingsState.droneSystemId.toString(),
                             droneComponentId = settingsState.droneComponentId.toString()
+                        ),
+                        stickSizeState = SettingsScreenState.StickSizeState(
+                            leftFactor = settingsState.leftStickSizeFactor,
+                            rightFactor = settingsState.rightStickSizeFactor
                         )
                     )
                 }
@@ -92,6 +100,26 @@ class SettingsViewModel(
                 appSettings.setDroneSystemId(droneSystemId.toInt())
                 appSettings.setDroneComponentId(droneComponentId.toInt())
             }
+        }
+    }
+
+    fun onLeftStickFactorChanged(value: Float) {
+        _state.update { it.copy(stickSizeState = it.stickSizeState.copy(leftFactor = value)) }
+    }
+
+    fun onLeftStickFactorDragEnded() {
+        viewModelScope.launch {
+            appSettings.setLeftStickSizeFactor(_state.value.stickSizeState.leftFactor)
+        }
+    }
+
+    fun onRightStickFactorChanged(value: Float) {
+        _state.update { it.copy(stickSizeState = it.stickSizeState.copy(rightFactor = value)) }
+    }
+
+    fun onRightStickFactorDragEnded() {
+        viewModelScope.launch {
+            appSettings.setRightStickSizeFactor(_state.value.stickSizeState.rightFactor)
         }
     }
 }
