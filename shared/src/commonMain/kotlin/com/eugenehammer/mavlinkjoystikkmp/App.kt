@@ -51,7 +51,7 @@ fun App() {
                     }
                     entry<Settings> {
                         SettingsScreen(
-                            goBack = { backStack.removeFirstOrNull() }
+                            goBack = { backStack.removeLastOrNull() }
                         )
                     }
                 }

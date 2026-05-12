@@ -19,9 +19,6 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Code
-//import androidx.compose.material3.icons.Icons
-//import androidx.compose.material3.icons.automirrored.filled.ArrowBack
-//import androidx.compose.material3.icons.filled.Code
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -35,8 +32,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.eugenehammer.mavlinkjoystikkmp.ui.settings.compose.ConnectionSettingsScreen
 import org.koin.compose.viewmodel.koinViewModel
 
 private val BackgroundColor = Color(0xFF0D0D0D)
@@ -65,18 +64,18 @@ fun SettingsScreen(
                 .padding(innerPadding),
         ) {
 
-                SettingsSidebar(
-                    selectedTab = state.selectedTab,
-                    onTabSelected = vm::onTabSelected,
-                    onGithubClick = { uriHandler.openUri("https://github.com/goldarte/mavlink-joystick") }
-                )
+            SettingsSidebar(
+                selectedTab = state.selectedTab,
+                onTabSelected = vm::onTabSelected,
+                onGithubClick = { uriHandler.openUri("https://github.com/goldarte/mavlink-joystick") }
+            )
 
-                HorizontalDivider(
-                    modifier = Modifier
-                        .fillMaxHeight()
-                        .width(1.dp),
-                    color = DividerColor,
-                )
+            HorizontalDivider(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .width(1.dp),
+                color = DividerColor,
+            )
 
             Box(
                 modifier = Modifier
@@ -86,7 +85,16 @@ fun SettingsScreen(
             ) {
                 when (state.selectedTab) {
                     SettingsScreenState.SettingsTab.Connection -> {
-                        SettingsPlaceholder("Connection")
+                        ConnectionSettingsScreen(
+                            state = state.connectionSettingsState,
+                            onAutodetectCheckboxClicked = vm::onAutodetectCheckboxClicked,
+                            onListenPortChanged = vm::onListenPortChanged,
+                            onHostChanged = vm::onHostChanged,
+                            onTargetPortChanged = vm::onTargetPortChanged,
+                            onDroneSystemIdChanged = vm::onDroneSystemIdChanged,
+                            onDroneComponentIdChanged = vm::onDroneComponentIdChanged,
+                            onSaveClick = vm::onSaveConnectionSettingsClicked,
+                        )
                     }
 
                     SettingsScreenState.SettingsTab.SticksSize -> {
@@ -256,7 +264,7 @@ private fun SidebarItem(
     selected: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    paddingStart: androidx.compose.ui.unit.Dp = 6.dp,
+    paddingStart: Dp = 6.dp,
 ) {
     Text(
         text = title,
