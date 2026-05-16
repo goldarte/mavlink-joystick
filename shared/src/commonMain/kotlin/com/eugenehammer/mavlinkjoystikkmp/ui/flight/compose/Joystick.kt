@@ -4,7 +4,9 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -30,6 +32,9 @@ fun Joystick(
         state.stickSizeFactor.coerceIn(0.25f, 1f)
     }
 
+    val currentOnChanged by rememberUpdatedState(onChanged)
+    val currentState by rememberUpdatedState(state)
+
     Canvas(
         modifier = Modifier
             .aspectRatio(1f)
@@ -38,7 +43,6 @@ fun Joystick(
                 canvasHeight = it.height.toFloat()
             }
             .pointerInput(
-                state.isThrottleMode,
                 canvasWidth,
                 canvasHeight,
                 coercedStickSizeFactor,
@@ -51,8 +55,8 @@ fun Joystick(
                             width = canvasWidth,
                             height = canvasHeight,
                             stickSizeFactor = coercedStickSizeFactor,
-                            isThrottleMode = state.isThrottleMode,
-                            onChanged = onChanged,
+                            isThrottleMode = currentState.isThrottleMode,
+                            onChanged = currentOnChanged,
                         )
                     },
                     onDrag = { change, _ ->
@@ -62,13 +66,19 @@ fun Joystick(
                             width = canvasWidth,
                             height = canvasHeight,
                             stickSizeFactor = coercedStickSizeFactor,
-                            isThrottleMode = state.isThrottleMode,
-                            onChanged = onChanged,
+                            isThrottleMode = currentState.isThrottleMode,
+                            onChanged = currentOnChanged,
                         )
 
                         change.consume()
                     },
-                    onDragEnd = { if (!state.isThrottleMode) onChanged(0f, 0f) },
+                    onDragEnd = {
+                        if (currentState.isThrottleMode) {
+                            currentOnChanged(0f, currentState.valueY)
+                        } else {
+                            currentOnChanged(0f, 0f)
+                        }
+                    },
                 )
             },
     ) {
@@ -242,11 +252,7 @@ private fun updateStateFromTouch(
         cy + radius,
     )
 
-    val valueX = if (isThrottleMode) {
-        0f
-    } else {
-        ((clampedX - cx) / radius).coerceIn(-1f, 1f)
-    }
+    val valueX = ((clampedX - cx) / radius).coerceIn(-1f, 1f)
 
     val valueY = if (isThrottleMode) {
         (1f - ((clampedY - (cy - radius)) / (2f * radius))).coerceIn(0f, 1f)
