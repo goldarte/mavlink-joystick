@@ -4,6 +4,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
+import androidx.navigation3.runtime.NavEntry
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
@@ -14,6 +15,7 @@ import com.eugenehammer.mavlinkjoystikkmp.di.platformModule
 import com.eugenehammer.mavlinkjoystikkmp.di.sharedModule
 import com.eugenehammer.mavlinkjoystikkmp.ui.flight.compose.FlightScreen
 import com.eugenehammer.mavlinkjoystikkmp.ui.settings.compose.SettingsScreen
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.modules.SerializersModule
 import kotlinx.serialization.modules.polymorphic
@@ -21,16 +23,19 @@ import org.koin.compose.KoinApplication
 import org.koin.dsl.koinConfiguration
 
 @Serializable
-private data object Flight : NavKey
+sealed interface Route : NavKey
 
 @Serializable
-private data object Settings : NavKey
+data object Flight : Route
 
+@Serializable
+data object Settings : Route
+
+@OptIn(ExperimentalSerializationApi::class)
 private val config = SavedStateConfiguration {
     serializersModule = SerializersModule {
         polymorphic(NavKey::class) {
-            subclass(Flight::class, Flight.serializer())
-            subclass(Settings::class, Settings.serializer())
+            subclassesOfSealed<Route>()
         }
     }
 }
@@ -43,7 +48,7 @@ fun App() {
         content = {
             MaterialTheme {
                 val backStack = rememberNavBackStack(config, Flight)
-                val entryProvider = entryProvider {
+                val entryProvider: (NavKey) -> NavEntry<NavKey> = entryProvider {
                     entry<Flight> {
                         FlightScreen(
                             openSettings = { backStack.add(Settings) }

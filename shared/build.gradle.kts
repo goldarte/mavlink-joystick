@@ -30,7 +30,7 @@ kotlin {
         iosSimulatorArm64()
     ).forEach { iosTarget ->
         iosTarget.binaries.framework {
-            baseName = "MavlinkJoystik"
+            baseName = "MavlinkJoystick"
             isStatic = true
         }
     }

@@ -11,7 +11,7 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		1371237D68E3D666AE2E8179 /* Exceptions for "iosApp" folder in "iosApp" target */ = {
+		1371237D68E3D666AE2E8179 /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
@@ -24,7 +24,7 @@
 		BC3EA23C9C38D0225C9579C5 /* iosApp */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				1371237D68E3D666AE2E8179 /* Exceptions for "iosApp" folder in "iosApp" target */,
+				1371237D68E3D666AE2E8179 /* PBXFileSystemSynchronizedBuildFileExceptionSet */,
 			);
 			path = iosApp;
 			sourceTree = "<group>";
@@ -71,6 +71,7 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 749B728944ED8AC50190E430 /* Build configuration list for PBXNativeTarget "iosApp" */;
 			buildPhases = (
+				16C10BD5BBDA07581580A9A9 /* Compile Kotlin */,
 				34151A01462D76B6A5D98A98 /* Compile Kotlin Framework */,
 				191FB46AB8C61EFF33E722B8 /* Sources */,
 				8C66134F3823436436AC3D99 /* Frameworks */,
@@ -135,6 +136,16 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXShellScriptBuildPhase section */
+		16C10BD5BBDA07581580A9A9 /* Compile Kotlin */ = {
+			isa = PBXShellScriptBuildPhase;
+			inputPaths = (
+			);
+			name = "Compile Kotlin";
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellScript = "if [ \"YES\" = \"$OVERRIDE_KOTLIN_BUILD_IDE_SUPPORTED\" ]; then\n  echo \"Skipping Gradle build task invocation due to OVERRIDE_KOTLIN_BUILD_IDE_SUPPORTED environment variable set to \\\"YES\\\"\"\n  exit 0\nfi\ncd \"$SRCROOT/..\"\n./gradlew :shared:embedAndSignAppleFrameworkForXcode";
+		};
 		34151A01462D76B6A5D98A98 /* Compile Kotlin Framework */ = {
 			isa = PBXShellScriptBuildPhase;
 			alwaysOutOfDate = 1;
@@ -349,20 +360,20 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		AEBB02A413469324BF684DC0 /* Build configuration list for PBXProject "iosApp" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				23AC12EC651E241A4F26E9E7 /* Debug */,
-				3D462CD8ECE57C9E0958FC8D /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
 		749B728944ED8AC50190E430 /* Build configuration list for PBXNativeTarget "iosApp" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				F7B0D19F0861FBB4C9652742 /* Debug */,
 				FBCD9351F5FED017AA0CC47B /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		AEBB02A413469324BF684DC0 /* Build configuration list for PBXProject "iosApp" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				23AC12EC651E241A4F26E9E7 /* Debug */,
+				3D462CD8ECE57C9E0958FC8D /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
