@@ -152,7 +152,6 @@ class FlightViewModel(
     }
 
     fun onArmClick() {
-        _uiState.update { it.copy(leftJoystickState = leftJoystickInitialState) }
         viewModelScope.launch {
             if (uiState.value.armed) {
                 mavlinkManager.sendArmCommand(false)
@@ -163,7 +162,6 @@ class FlightViewModel(
     }
 
     fun onArmLongClick() {
-        _uiState.update { it.copy(leftJoystickState = leftJoystickInitialState) }
         viewModelScope.launch {
             mavlinkManager.sendArmCommand(false)
         }
