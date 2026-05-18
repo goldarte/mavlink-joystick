@@ -14,9 +14,17 @@ User-friendly joystick for controlling vehicles and robots via MAVLink protocol.
 
 ## Build
 
-- Clone this project
-- Install Android Studio Panda 4 (if not installed)
-- Open the project in Android Studio → Build → Run
+This is [Kotlin Multiplatform](https://www.jetbrains.com/help/kotlin-multiplatform-dev/get-started.html) application, so you can build the app for iOS and Android.
+
+### Build and Run Android Application
+
+- Open this repo in Android Studio (Panda 4 is recommended)
+- To build and run the development version of the Android app, use the run configuration from Android Studio toolbar (androidApp)
+
+### Build and Run iOS Application
+
+- Get something with MacOS
+- To build and run the development version of the iOS app, open the [/iosApp](./iosApp) directory in Xcode and run it from there
 
 ## Connect to drone
 
