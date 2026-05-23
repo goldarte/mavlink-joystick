@@ -103,8 +103,8 @@ abstract class BaseMavlinkManager(
         scope.launch {
             try {
                 appSettings.setDetectedConnection(host, port, droneSystemId)
-            } catch (_: Exception) {
-                // Keep MAVLink communication running even if settings persistence fails.
+            } catch (e: Exception) {
+                appendConsoleResponse("Failed to save detected connection settings: ${e.message}\n")
             }
         }
     }
