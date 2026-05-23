@@ -28,7 +28,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import java.io.ByteArrayOutputStream
 import java.io.IOException
@@ -47,71 +46,32 @@ import java.util.concurrent.atomic.AtomicBoolean
  *
  * Defaults: host=192.168.4.1 (ESP telemetry AP), port=14550 (GCS port).
  */
-class AndroidMavlinkManager(
+class MavlinkManagerAndroid(
     context: Context?,
-    private val appSettings: AppSettings,
-) : MavlinkManager {
-    override val consoleFlow: MutableStateFlow<String> = MutableStateFlow("")
-    override var targetHost: String = "255.255.255.255"
-    override var targetPort: Int = 14550
-    override var listenPort: Int = 14550
-    override var droneSystemId: Int = 1
-    override var droneComponentId: Int = 1
-    override var autoDetect: Boolean = true
-    override var systemId: Int = 255      // GCS system ID
-    override var componentId: Int = 190    // GCS component ID
-
-    // ── State ────────────────────────────────────────────────────────────────
-    var isArmed: Boolean = false
-        private set
-    var isConnected: Boolean = false
-        private set
-    override var onStateChanged: ((armed: Boolean, connected: Boolean) -> Unit)? = null
-    override var onAttitudeReceived: ((roll: Float, pitch: Float, yaw: Float) -> Unit)? = null
-    override var onBatteryVoltageReceived: ((voltage: Float) -> Unit)? = null
-    override var onFlightModeReceived: ((mode: String) -> Unit)? = null
-    override var onAutopilotNameReceived: ((name: String) -> Unit)? = null
-    override var onStatustextReceived: ((text: String, severity: Int) -> Unit)? = null
-
-    // ── Drone ID Logic ───────────────────────────────────────────────────────
-    internal var inited: Boolean = false
-
-    // ── Manual Control (-1000..1000) ────────────────────────────────────────
-    private var stickX: Int = 0 // Roll
-    private var stickY: Int = 0 // Pitch
-    private var stickZ: Int = 0 // Throttle (0..1000 or -1000..1000)
-    private var stickR: Int = 0 // Yaw
-
+    appSettings: AppSettings,
+) : BaseMavlinkManager(appSettings) {
     // ── Internals ────────────────────────────────────────────────────────────
     private val running = AtomicBoolean(false)
     private var socket: DatagramSocket? = null
     private var sendJob: Job? = null
     private var recvJob: Job? = null
-    private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
-
-    private var lastHeartbeat: Long = 0L
-    private val HEARTBEAT_TIMEOUT_MS = 3000L
+    override val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
     private var targetAddress: InetAddress? = null
     private var lastListenAddress: InetAddress? = null
     private var lastListenPort: Int = targetPort
-    private var autopilot_name: String = "---"
 
     private val connectivityManager =
         context?.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
     private val networkCallback = object : ConnectivityManager.NetworkCallback() {
         override fun onAvailable(network: Network) {
             Log.i("MavlinkManager", "Network available: resetting discovery (inited = false)")
-            inited = false
-            isConnected = false
-            onStateChanged?.invoke(isArmed, isConnected)
+            resetDiscovery()
         }
 
         override fun onLost(network: Network) {
             Log.i("MavlinkManager", "Network lost: resetting discovery (inited = false)")
-            inited = false
-            isConnected = false
-            onStateChanged?.invoke(isArmed, isConnected)
+            resetDiscovery()
         }
     }
 
@@ -176,14 +136,6 @@ class AndroidMavlinkManager(
         inited = false
     }
 
-    /** Update control values. All inputs are -1.0..1.0 (throttle 0..1). */
-    override fun setChannels(roll: Float, pitch: Float, throttle: Float, yaw: Float) {
-        stickX = axisToManual(roll)
-        stickY = axisToManual(-pitch) // Invert: forward stick = positive pitch
-        stickZ = throttleToManual(throttle)
-        stickR = axisToManual(yaw)
-    }
-
     /** Send MAV_CMD_COMPONENT_ARM_DISARM (400). */
     override fun sendArmCommand(arm: Boolean) {
         scope.launch {
@@ -222,29 +174,16 @@ class AndroidMavlinkManager(
                 offset += count
             }
         }
-        consoleFlow.value += "> $text\n"
+        appendConsoleCommand(text)
     }
 
     // ── Private helpers ──────────────────────────────────────────────────────
-
-    private fun axisToManual(v: Float) = (v.coerceIn(-1f, 1f) * 1000).toInt()
-    private fun throttleToManual(v: Float) = (v.coerceIn(0f, 1f) * 1000).toInt()
 
     private fun updateTargetAddress() {
         try {
             targetAddress = InetAddress.getByName(targetHost)
         } catch (e: Exception) {
             targetAddress = null
-        }
-    }
-
-    private fun persistDetectedConnection(host: String, port: Int, droneSystemId: Int) {
-        scope.launch {
-            try {
-                appSettings.setDetectedConnection(host, port, droneSystemId)
-            } catch (e: Exception) {
-                Log.e("MavlinkManager", "Failed to save detected MAVLink connection", e)
-            }
         }
     }
 
@@ -262,11 +201,7 @@ class AndroidMavlinkManager(
                 }
 
                 // Refresh connection status
-                val nowConnected = (now - lastHeartbeat) < HEARTBEAT_TIMEOUT_MS
-                if (nowConnected != isConnected) {
-                    isConnected = nowConnected
-                    onStateChanged?.invoke(isArmed, isConnected)
-                }
+                refreshConnection(now)
                 delay(20)  // 50 Hz
             }
         }
@@ -381,7 +316,7 @@ class AndroidMavlinkManager(
                         is SerialControl -> {
                             Log.v("MavlinkManager", "SerialControl: ${payload.count()} bytes")
                             val data = payload.data().copyOfRange(0, payload.count())
-                            consoleFlow.value += String(data, Charsets.UTF_8)
+                            appendConsoleResponse(String(data, Charsets.UTF_8))
                         }
                     }
                 } catch (e: Exception) {
@@ -437,107 +372,14 @@ class AndroidMavlinkManager(
     }
 
     private fun handleHeartbeat(heartbeat: Heartbeat) {
-        lastHeartbeat = System.currentTimeMillis()
-        val beforeConnected = isConnected
-        isConnected = true
         Log.i("MavlinkManager", "Got Heartbeat: ${heartbeat}")
 
-        // Flight mode
-        val modeName = getFlightModeName(heartbeat)
-        onFlightModeReceived?.invoke(modeName)
-
-        val autopilot = heartbeat.autopilot().entry()
-        val current_autopilot_name = autopilot_name
-        if (autopilot == MavAutopilot.MAV_AUTOPILOT_ARDUPILOTMEGA) {
-            autopilot_name = "ArduPilot"
-        } else if (autopilot == MavAutopilot.MAV_AUTOPILOT_PX4) {
-            autopilot_name = "PX4"
-        } else if (autopilot == MavAutopilot.MAV_AUTOPILOT_GENERIC) {
-            autopilot_name = "Flix"
-        } else {
-            autopilot_name = ""
-        }
-
-        if (current_autopilot_name != autopilot_name) {
-            onAutopilotNameReceived?.invoke(autopilot_name)
-        }
-
-        // Try raw bitwise check if flags() doesn't exist
-        val nowArmed = (heartbeat.baseMode().value() and 0x80) != 0
-        if (nowArmed != isArmed || beforeConnected != isConnected) {
-            isArmed = nowArmed
-            onStateChanged?.invoke(isArmed, isConnected)
-        }
-    }
-
-    private fun getFlightModeName(heartbeat: Heartbeat): String {
-        val mode = heartbeat.customMode()
-        val autopilot = heartbeat.autopilot().entry()
-
-        if (autopilot == MavAutopilot.MAV_AUTOPILOT_ARDUPILOTMEGA) {
-            return when (mode.toInt()) {
-                0 -> "STABILIZE"
-                1 -> "ACRO"
-                2 -> "ALT_HOLD"
-                3 -> "AUTO"
-                4 -> "GUIDED"
-                5 -> "LOITER"
-                6 -> "RTL"
-                7 -> "CIRCLE"
-                9 -> "LAND"
-                11 -> "DRIFT"
-                13 -> "SPORT"
-                14 -> "FLIP"
-                15 -> "AUTOTUNE"
-                16 -> "POSHOLD"
-                17 -> "BRAKE"
-                18 -> "THROW"
-                19 -> "AVOID_ADSB"
-                20 -> "GUIDED_NOGPS"
-                21 -> "SMART_RTL"
-                22 -> "FLOWHOLD"
-                23 -> "FOLLOW"
-                24 -> "ZIGZAG"
-                25 -> "SYSTEMID"
-                26 -> "AUTOROTATE"
-                27 -> "AUTO_RTL"
-                else -> "MODE($mode)"
-            }
-        } else if (autopilot == MavAutopilot.MAV_AUTOPILOT_PX4) {
-            val customMode = mode.toLong()
-            val mainMode = ((customMode shr 16) and 0xFF).toInt()
-            val subMode = ((customMode shr 24) and 0xFF).toInt()
-
-            return when (mainMode) {
-                1 -> "MANUAL"
-                2 -> "ALTCTL"
-                3 -> "POSCTL"
-                4 -> when (subMode) {
-                    2 -> "TAKEOFF"
-                    3 -> "LOITER"
-                    4 -> "MISSION"
-                    5 -> "RTL"
-                    6 -> "LAND"
-                    8 -> "FOLLOW"
-                    else -> "AUTO"
-                }
-
-                5 -> "ACRO"
-                6 -> "OFFBOARD"
-                7 -> "STABILIZED"
-                else -> "MODE($mainMode:$subMode)"
-            }
-        } else if (autopilot == MavAutopilot.MAV_AUTOPILOT_GENERIC) {
-            // just detecting drone as flix
-            return when (mode.toInt()) {
-                0 -> "RAW"
-                1 -> "ACRO"
-                2 -> "STAB"
-                3 -> "AUTO"
-                else -> "MODE($mode)"
-            }
-        }
-        return "MODE($mode)"
+        handleHeartbeat(
+            customMode = heartbeat.customMode(),
+            autopilot = heartbeat.autopilot().entry().toCommonAutopilot(),
+            baseMode = heartbeat.baseMode().value(),
+            now = System.currentTimeMillis()
+        )
     }
 
     private fun handleAttitude(attitude: Attitude) {
@@ -549,20 +391,19 @@ class AndroidMavlinkManager(
     }
 
     private fun handleAttitudeQuaternion(aq: AttitudeQuaternion) {
-        val w = aq.q1()
-        val x = aq.q2()
-        val y = aq.q3()
-        val z = aq.q4()
-
-        // https://en.wikipedia.org/wiki/Conversion_between_quaternions_and_Euler_angles#Quaternion_to_Euler_angles_conversion
-        val roll = Math.atan2(2.0 * (w * x + y * z), 1.0 - 2.0 * (x * x + y * y))
-        val pitch = Math.asin((2.0 * (w * y - z * x)).coerceIn(-1.0, 1.0))
-        val yaw = Math.atan2(2.0 * (w * z + x * y), 1.0 - 2.0 * (y * y + z * z))
-
-        onAttitudeReceived?.invoke(
-            Math.toDegrees(roll).toFloat(),
-            Math.toDegrees(pitch).toFloat(),
-            Math.toDegrees(yaw).toFloat()
+        handleAttitudeQuaternion(
+            w = aq.q1().toDouble(),
+            x = aq.q2().toDouble(),
+            y = aq.q3().toDouble(),
+            z = aq.q4().toDouble()
         )
     }
 }
+
+private fun MavAutopilot.toCommonAutopilot(): MavlinkAutopilot =
+    when (this) {
+        MavAutopilot.MAV_AUTOPILOT_ARDUPILOTMEGA -> MavlinkAutopilot.ArduPilotMega
+        MavAutopilot.MAV_AUTOPILOT_PX4 -> MavlinkAutopilot.Px4
+        MavAutopilot.MAV_AUTOPILOT_GENERIC -> MavlinkAutopilot.Generic
+        else -> MavlinkAutopilot.Other
+    }
