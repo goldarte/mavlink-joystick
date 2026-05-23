@@ -163,7 +163,7 @@ class MavlinkManagerIOS(
                 targetPort = lastListenPort
                 inited = true
                 isConnected = true
-                onStateChanged?.invoke(isArmed, isConnected)
+                emitConnectionState()
                 persistDetectedConnection(targetHost, targetPort, droneSystemId)
             }
         }
@@ -351,7 +351,7 @@ class MavlinkManagerIOS(
 
     private fun handleAttitude(payload: ByteArray) {
         if (payload.size < 28) return
-        onAttitudeReceived?.invoke(
+        emitAttitude(
             radiansToDegrees(payload.f32(4)),
             radiansToDegrees(payload.f32(8)),
             radiansToDegrees(payload.f32(12))
@@ -375,7 +375,7 @@ class MavlinkManagerIOS(
             val voltage = payload.u16(10 + i * 2)
             if (voltage < 65535) totalMv += voltage
         }
-        onBatteryVoltageReceived?.invoke(totalMv.toFloat() / 1000f)
+        emitBatteryVoltage(totalMv.toFloat() / 1000f)
     }
 
     private fun handleStatustext(payload: ByteArray) {
@@ -383,7 +383,7 @@ class MavlinkManagerIOS(
         val severity = payload.u8(0)
         val textBytes = payload.copyOfRange(1, minOf(payload.size, 51))
         val textLen = textBytes.indexOf(0).let { if (it >= 0) it else textBytes.size }
-        onStatustextReceived?.invoke(textBytes.copyOf(textLen).decodeToString(), severity)
+        emitStatusText(textBytes.copyOf(textLen).decodeToString(), severity)
     }
 
     private fun handleSerialControl(payload: ByteArray) {

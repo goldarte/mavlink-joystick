@@ -3,13 +3,19 @@ package com.eugenehammer.mavlinkjoystikkmp.mavlink
 import com.eugenehammer.mavlinkjoystikkmp.data.AppSettings
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlin.math.asin
 import kotlin.math.atan2
 
 interface MavlinkManager {
     val consoleFlow: Flow<String>
+    val connectionState: StateFlow<MavlinkConnectionState>
+    val events: Flow<MavlinkEvent>
 
     var targetHost: String
     var targetPort: Int
@@ -19,13 +25,6 @@ interface MavlinkManager {
     var autoDetect: Boolean
     var systemId: Int      // GCS system ID
     var componentId: Int    // GCS component ID
-
-    var onStateChanged: ((armed: Boolean, connected: Boolean) -> Unit)?
-    var onAttitudeReceived: ((roll: Float, pitch: Float, yaw: Float) -> Unit)?
-    var onBatteryVoltageReceived: ((voltage: Float) -> Unit)?
-    var onFlightModeReceived: ((mode: String) -> Unit)?
-    var onAutopilotNameReceived: ((name: String) -> Unit)?
-    var onStatustextReceived: ((text: String, severity: Int) -> Unit)?
 
     fun start()
     fun stop()
@@ -39,7 +38,15 @@ abstract class BaseMavlinkManager(
 ) : MavlinkManager {
     protected abstract val scope: CoroutineScope
 
-    override val consoleFlow: MutableStateFlow<String> = MutableStateFlow("")
+    private val _connectionState = MutableStateFlow(MavlinkConnectionState())
+    override val connectionState: StateFlow<MavlinkConnectionState> = _connectionState.asStateFlow()
+
+    private val _events = MutableSharedFlow<MavlinkEvent>(extraBufferCapacity = 64)
+    override val events: Flow<MavlinkEvent> = _events.asSharedFlow()
+
+    protected val mutableConsoleFlow: MutableStateFlow<String> = MutableStateFlow("")
+    override val consoleFlow: Flow<String> = mutableConsoleFlow.asStateFlow()
+
     override var targetHost: String = "255.255.255.255"
     override var targetPort: Int = 14550
     override var listenPort: Int = 14550
@@ -53,13 +60,6 @@ abstract class BaseMavlinkManager(
         protected set
     var isConnected: Boolean = false
         protected set
-
-    override var onStateChanged: ((armed: Boolean, connected: Boolean) -> Unit)? = null
-    override var onAttitudeReceived: ((roll: Float, pitch: Float, yaw: Float) -> Unit)? = null
-    override var onBatteryVoltageReceived: ((voltage: Float) -> Unit)? = null
-    override var onFlightModeReceived: ((mode: String) -> Unit)? = null
-    override var onAutopilotNameReceived: ((name: String) -> Unit)? = null
-    override var onStatustextReceived: ((text: String, severity: Int) -> Unit)? = null
 
     protected var inited: Boolean = false
     protected var stickX: Int = 0
@@ -78,24 +78,24 @@ abstract class BaseMavlinkManager(
     }
 
     protected fun appendConsoleCommand(text: String) {
-        consoleFlow.value += "> $text\n"
+        mutableConsoleFlow.value += "> $text\n"
     }
 
     protected fun appendConsoleResponse(text: String) {
-        consoleFlow.value += text
+        mutableConsoleFlow.value += text
     }
 
     protected fun resetDiscovery() {
         inited = false
         isConnected = false
-        onStateChanged?.invoke(isArmed, isConnected)
+        emitConnectionState()
     }
 
     protected fun refreshConnection(now: Long, timeoutMillis: Long = MAVLINK_HEARTBEAT_TIMEOUT_MS) {
         val nowConnected = (now - lastHeartbeat) < timeoutMillis
         if (nowConnected != isConnected) {
             isConnected = nowConnected
-            onStateChanged?.invoke(isArmed, isConnected)
+            emitConnectionState()
         }
     }
 
@@ -119,18 +119,18 @@ abstract class BaseMavlinkManager(
         val beforeConnected = isConnected
         isConnected = true
 
-        onFlightModeReceived?.invoke(getFlightModeName(customMode, autopilot))
+        emitEvent(MavlinkEvent.FlightModeReceived(getFlightModeName(customMode, autopilot)))
 
         val newAutopilotName = getAutopilotName(autopilot)
         if (autopilotName != newAutopilotName) {
             autopilotName = newAutopilotName
-            onAutopilotNameReceived?.invoke(autopilotName)
+            emitEvent(MavlinkEvent.AutopilotNameReceived(autopilotName))
         }
 
         val nowArmed = (baseMode and MAV_MODE_FLAG_SAFETY_ARMED) != 0
         if (nowArmed != isArmed || beforeConnected != isConnected) {
             isArmed = nowArmed
-            onStateChanged?.invoke(isArmed, isConnected)
+            emitConnectionState()
         }
     }
 
@@ -139,11 +139,27 @@ abstract class BaseMavlinkManager(
         val pitch = asin((2.0 * (w * y - z * x)).coerceIn(-1.0, 1.0))
         val yaw = atan2(2.0 * (w * z + x * y), 1.0 - 2.0 * (y * y + z * z))
 
-        onAttitudeReceived?.invoke(
-            radiansToDegrees(roll),
-            radiansToDegrees(pitch),
-            radiansToDegrees(yaw)
-        )
+        emitAttitude(radiansToDegrees(roll), radiansToDegrees(pitch), radiansToDegrees(yaw))
+    }
+
+    protected fun emitConnectionState() {
+        _connectionState.value = MavlinkConnectionState(isArmed, isConnected)
+    }
+
+    protected fun emitAttitude(roll: Float, pitch: Float, yaw: Float) {
+        emitEvent(MavlinkEvent.AttitudeReceived(roll, pitch, yaw))
+    }
+
+    protected fun emitBatteryVoltage(voltage: Float) {
+        emitEvent(MavlinkEvent.BatteryVoltageReceived(voltage))
+    }
+
+    protected fun emitStatusText(text: String, severity: Int) {
+        emitEvent(MavlinkEvent.StatusTextReceived(text, severity))
+    }
+
+    private fun emitEvent(event: MavlinkEvent) {
+        _events.tryEmit(event)
     }
 
     protected fun axisToManual(value: Float): Int = (value.coerceIn(-1f, 1f) * 1000).toInt()
@@ -230,6 +246,30 @@ enum class MavlinkAutopilot {
     Px4,
     Generic,
     Other,
+}
+
+data class MavlinkConnectionState(
+    val armed: Boolean = false,
+    val connected: Boolean = false,
+)
+
+sealed interface MavlinkEvent {
+    data class AttitudeReceived(
+        val roll: Float,
+        val pitch: Float,
+        val yaw: Float,
+    ) : MavlinkEvent
+
+    data class BatteryVoltageReceived(val voltage: Float) : MavlinkEvent
+
+    data class FlightModeReceived(val mode: String) : MavlinkEvent
+
+    data class AutopilotNameReceived(val name: String) : MavlinkEvent
+
+    data class StatusTextReceived(
+        val text: String,
+        val severity: Int,
+    ) : MavlinkEvent
 }
 
 const val MAVLINK_HEARTBEAT_TIMEOUT_MS = 3000L

@@ -4,6 +4,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.eugenehammer.mavlinkjoystikkmp.data.AppSettings
+import com.eugenehammer.mavlinkjoystikkmp.mavlink.MavlinkEvent
 import com.eugenehammer.mavlinkjoystikkmp.mavlink.MavlinkManager
 import com.eugenehammer.mavlinkjoystikkmp.utils.CurveUtils
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -91,35 +92,46 @@ class FlightViewModel(
     }
 
     private fun observeMavlink() {
-        mavlinkManager.onStateChanged = { armed, connected ->
-            _uiState.update {
-                it.copy(
-                    armed = armed,
-                    connectionStatus = "${mavlinkManager.targetHost}:${mavlinkManager.targetPort}".takeIf { connected }
-                )
+        viewModelScope.launch {
+            mavlinkManager.connectionState.collect { connectionState ->
+                _uiState.update {
+                    it.copy(
+                        armed = connectionState.armed,
+                        connectionStatus = "${mavlinkManager.targetHost}:${mavlinkManager.targetPort}"
+                            .takeIf { connectionState.connected }
+                    )
+                }
             }
         }
 
-        mavlinkManager.onAttitudeReceived = { rollDeg, pitchDeg, yawDeg ->
-            _uiState.update {
-                it.copy(
-                    rollDeg = rollDeg,
-                    pitchDeg = pitchDeg,
-                    yawHeading = ((yawDeg % 360f) + 360f) % 360f
-                )
+        viewModelScope.launch {
+            mavlinkManager.events.collect { event ->
+                when (event) {
+                    is MavlinkEvent.AttitudeReceived -> {
+                        _uiState.update {
+                            it.copy(
+                                rollDeg = event.roll,
+                                pitchDeg = event.pitch,
+                                yawHeading = ((event.yaw % 360f) + 360f) % 360f
+                            )
+                        }
+                    }
+
+                    is MavlinkEvent.BatteryVoltageReceived -> {
+                        _uiState.update { it.copy(batteryVoltage = "${event.voltage}V") }
+                    }
+
+                    is MavlinkEvent.FlightModeReceived -> {
+                        _uiState.update { it.copy(flightMode = event.mode) }
+                    }
+
+                    is MavlinkEvent.AutopilotNameReceived -> {
+                        _uiState.update { it.copy(autopilotName = event.name) }
+                    }
+
+                    is MavlinkEvent.StatusTextReceived -> Unit
+                }
             }
-        }
-
-        mavlinkManager.onBatteryVoltageReceived = { voltage ->
-            _uiState.update { it.copy(batteryVoltage = "${voltage}V") }
-        }
-
-        mavlinkManager.onFlightModeReceived = { mode ->
-            _uiState.update { it.copy(flightMode = mode) }
-        }
-
-        mavlinkManager.onAutopilotNameReceived = { name ->
-            _uiState.update { it.copy(autopilotName = name) }
         }
     }
 

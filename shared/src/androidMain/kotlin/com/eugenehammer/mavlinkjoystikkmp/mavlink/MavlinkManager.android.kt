@@ -266,7 +266,7 @@ class MavlinkManagerAndroid(
                                 updateTargetAddress()
                                 inited = true
                                 isConnected = true
-                                onStateChanged?.invoke(isArmed, isConnected)
+                                emitConnectionState()
                                 persistDetectedConnection(targetHost, targetPort, droneSystemId)
                             }
                         }
@@ -300,7 +300,7 @@ class MavlinkManagerAndroid(
                             val totalMv = payload.voltages().filter { it < 65535 }.sum()
                             val volt = totalMv.toFloat() / 1000f
                             Log.v("MavlinkManager", "Battery: $volt V")
-                            onBatteryVoltageReceived?.invoke(volt)
+                            emitBatteryVoltage(volt)
                         }
 
                         is Statustext -> {
@@ -310,7 +310,7 @@ class MavlinkManagerAndroid(
                                     payload.severity().value()
                                 })"
                             )
-                            onStatustextReceived?.invoke(payload.text(), payload.severity().value())
+                            emitStatusText(payload.text(), payload.severity().value())
                         }
 
                         is SerialControl -> {
@@ -383,7 +383,7 @@ class MavlinkManagerAndroid(
     }
 
     private fun handleAttitude(attitude: Attitude) {
-        onAttitudeReceived?.invoke(
+        emitAttitude(
             Math.toDegrees(attitude.roll().toDouble()).toFloat(),
             Math.toDegrees(attitude.pitch().toDouble()).toFloat(),
             Math.toDegrees(attitude.yaw().toDouble()).toFloat()
