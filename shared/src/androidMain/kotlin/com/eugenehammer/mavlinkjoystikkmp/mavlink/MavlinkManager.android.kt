@@ -6,7 +6,7 @@ import android.net.Network
 import android.net.NetworkCapabilities
 import android.net.NetworkRequest
 import android.util.Log
-import androidx.core.content.edit
+import com.eugenehammer.mavlinkjoystikkmp.data.AppSettings
 import io.dronefleet.mavlink.MavlinkConnection
 import io.dronefleet.mavlink.common.Attitude
 import io.dronefleet.mavlink.common.AttitudeQuaternion
@@ -47,7 +47,10 @@ import java.util.concurrent.atomic.AtomicBoolean
  *
  * Defaults: host=192.168.4.1 (ESP telemetry AP), port=14550 (GCS port).
  */
-class AndroidMavlinkManager(private val context: Context?) : MavlinkManager {
+class AndroidMavlinkManager(
+    context: Context?,
+    private val appSettings: AppSettings,
+) : MavlinkManager {
     override val consoleFlow: MutableStateFlow<String> = MutableStateFlow("")
     override var targetHost: String = "255.255.255.255"
     override var targetPort: Int = 14550
@@ -235,6 +238,16 @@ class AndroidMavlinkManager(private val context: Context?) : MavlinkManager {
         }
     }
 
+    private fun persistDetectedConnection(host: String, port: Int, droneSystemId: Int) {
+        scope.launch {
+            try {
+                appSettings.setDetectedConnection(host, port, droneSystemId)
+            } catch (e: Exception) {
+                Log.e("MavlinkManager", "Failed to save detected MAVLink connection", e)
+            }
+        }
+    }
+
     private fun startSendLoop() {
         sendJob = scope.launch {
             var lastHeartbeatSentTime = 0L
@@ -315,20 +328,11 @@ class AndroidMavlinkManager(private val context: Context?) : MavlinkManager {
                                 targetHost = addr.hostAddress!!
                                 targetPort = lastListenPort
 
-                                val prefs = context?.getSharedPreferences(
-                                    "mavlink_prefs",
-                                    Context.MODE_PRIVATE
-                                )!!
-                                prefs.edit(commit = true) {
-                                    putString("host", targetHost)
-                                    putInt("port", targetPort)
-                                    putInt("drone_system_id", droneSystemId)
-                                }
-
                                 updateTargetAddress()
                                 inited = true
                                 isConnected = true
                                 onStateChanged?.invoke(isArmed, isConnected)
+                                persistDetectedConnection(targetHost, targetPort, droneSystemId)
                             }
                         }
                     }

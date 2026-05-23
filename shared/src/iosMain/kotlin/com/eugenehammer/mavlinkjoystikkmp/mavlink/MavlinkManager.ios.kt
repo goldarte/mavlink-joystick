@@ -1,5 +1,6 @@
 package com.eugenehammer.mavlinkjoystikkmp.mavlink
 
+import com.eugenehammer.mavlinkjoystikkmp.data.AppSettings
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.IntVar
 import kotlinx.cinterop.addressOf
@@ -49,7 +50,9 @@ import kotlin.math.atan2
  * This mirrors the Android manager's behavior for the subset of MAVLink packets the app uses.
  */
 @OptIn(ExperimentalForeignApi::class)
-class MavlinkManagerIOS : MavlinkManager {
+class MavlinkManagerIOS(
+    private val appSettings: AppSettings,
+) : MavlinkManager {
     override val consoleFlow: MutableStateFlow<String> = MutableStateFlow("")
     override var targetHost: String = "255.255.255.255"
     override var targetPort: Int = 14550
@@ -206,6 +209,7 @@ class MavlinkManagerIOS : MavlinkManager {
                 inited = true
                 isConnected = true
                 onStateChanged?.invoke(isArmed, isConnected)
+                persistDetectedConnection(targetHost, targetPort, droneSystemId)
             }
         }
 
@@ -235,6 +239,16 @@ class MavlinkManagerIOS : MavlinkManager {
             crcExtra = CRC_HEARTBEAT,
             payload = heartbeatPayload()
         )
+    }
+
+    private fun persistDetectedConnection(host: String, port: Int, droneSystemId: Int) {
+        scope.launch {
+            try {
+                appSettings.setDetectedConnection(host, port, droneSystemId)
+            } catch (_: Exception) {
+                // Keep MAVLink communication running even if settings persistence fails.
+            }
+        }
     }
 
     private fun sendMavlinkMessage(msgId: Int, crcExtra: Int, payload: ByteArray) {

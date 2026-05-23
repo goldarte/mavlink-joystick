@@ -141,6 +141,21 @@ class AppSettings(private val dataStore: DataStore<Preferences>) {
         _state.update { it.copy(autoDetect = value) }
     }
 
+    suspend fun setDetectedConnection(host: String, port: Int, droneSystemId: Int) {
+        dataStore.edit {
+            it[AppSettingsKeys.HOST] = host
+            it[AppSettingsKeys.PORT] = port
+            it[AppSettingsKeys.DRONE_SYSTEM_ID] = droneSystemId
+        }
+        _state.update {
+            it.copy(
+                host = host,
+                port = port,
+                droneSystemId = droneSystemId
+            )
+        }
+    }
+
     // ─────────────────────────────────────────────
     // JOYSTICK
     // ─────────────────────────────────────────────

@@ -8,6 +8,6 @@ import com.eugenehammer.mavlinkjoystikkmp.mavlink.MavlinkManager
 import org.koin.dsl.module
 
 actual val platformModule = module {
-    single<MavlinkManager> { AndroidMavlinkManager(get()) }
+    single<MavlinkManager> { AndroidMavlinkManager(get(), get()) }
     single<DataStore<Preferences>> { createDataStore(get()) }
 }
