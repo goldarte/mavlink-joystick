@@ -8,6 +8,15 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
 }
 
+compose {
+    resources {
+        packageOfResClass = "com.eugenehammer.mavlinkjoystikkmp.shared"
+        generateResClass = auto
+    }
+}
+
+
+
 kotlin {
     android {
         namespace = "com.eugenehammer.mavlinkjoystikkmp.shared"
@@ -69,3 +78,4 @@ kotlin {
         }
     }
 }
+
