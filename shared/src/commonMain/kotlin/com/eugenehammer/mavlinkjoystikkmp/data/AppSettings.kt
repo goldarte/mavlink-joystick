@@ -22,29 +22,29 @@ private val INITIAL_SETTINGS_STATE = SettingsState(
     autoDetect = true,
 
     // Joystick visuals
-    leftStickSizeFactor = 0.65f,
-    rightStickSizeFactor = 0.65f,
+    leftStickSizeFactor = 0.9f,
+    rightStickSizeFactor = 0.9f,
     isLeftJoystickInThrottleMode = true,
     isRightJoystickInThrottleMode = false,
     showCircularArea = true,
-    showSquareArea = true,
-    showCircleBoundaries = false,
+    showSquareArea = false,
+    showCircleBoundaries = true,
     knobColor = -769226,
 
     // Roll curve
     rollWeight = 1.0f,
     rollOffset = 0.0f,
-    rollExpo = 0.0f,
+    rollExpo = 0.35f,
 
     // Pitch curve
     pitchWeight = 1.0f,
     pitchOffset = 0.0f,
-    pitchExpo = 0.0f,
+    pitchExpo = 0.35f,
 
     // Yaw curve
     yawWeight = 1.0f,
     yawOffset = 0.0f,
-    yawExpo = 0.0f,
+    yawExpo = 0.35f,
 
     // Throttle curve
     throttleWeight = 1.0f,
