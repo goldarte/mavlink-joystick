@@ -10,14 +10,12 @@ data class SettingsScreenState(
     val stickSizeState: StickSizeState,
     val stickAppearanceState: StickAppearanceState,
     val curveSettingsState: StickCurveSettingsState,
-    val consoleState: ConsoleState,
 ) {
     enum class SettingsTab {
         Connection,
         SticksSize,
         SticksAppearance,
         SticksCurve,
-        MavlinkConsole,
     }
 
     data class ConnectionSettingsState(
@@ -61,9 +59,4 @@ data class SettingsScreenState(
             val expo: Float,
         )
     }
-
-    data class ConsoleState(
-        val log: String,
-        val input: String,
-    )
 }

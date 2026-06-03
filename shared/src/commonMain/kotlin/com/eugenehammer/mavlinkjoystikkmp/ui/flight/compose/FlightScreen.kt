@@ -40,7 +40,7 @@ import org.koin.compose.viewmodel.koinViewModel
 @Composable
 fun FlightScreen(
     modifier: Modifier = Modifier,
-    openSettings: () -> Unit,
+    openMenu: () -> Unit,
     vm: FlightViewModel = koinViewModel()
 ) {
     val state by vm.uiState.collectAsStateWithLifecycle()
@@ -48,7 +48,7 @@ fun FlightScreen(
     LaunchedEffect(Unit) {
         vm.events.collectLatest { event ->
             when (event) {
-                is FlightScreenEvent.GoToSettings -> openSettings()
+                is FlightScreenEvent.GoToMenu -> openMenu()
             }
         }
     }
@@ -257,14 +257,14 @@ fun FlightScreen(
                 )
 
                 TextButton(
-                    onClick = vm::onSettingsButtonClicked,
+                    onClick = vm::onMenuButtonClicked,
                     contentPadding = PaddingValues(
                         horizontal = 6.dp,
                         vertical = 0.dp,
                     ),
                 ) {
                     Text(
-                        text = "⚙ SETTINGS",
+                        text = "☰ MENU",
                         color = Color(0xFFAAAAAA),
                         fontSize = 10.sp,
                         fontFamily = FontFamily.Monospace,

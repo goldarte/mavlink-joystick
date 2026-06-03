@@ -130,14 +130,6 @@ fun SettingsScreen(
                             onExpoChangeFinished = vm::onExpoChangeFinished
                         )
                     }
-
-                    SettingsScreenState.SettingsTab.MavlinkConsole -> {
-                        ConsoleScreen(
-                            state = state.consoleState,
-                            onInputChange = vm::onConsoleInputChange,
-                            onSend = vm::sendConsoleMessage
-                        )
-                    }
                 }
             }
         }
@@ -232,14 +224,6 @@ private fun SettingsSidebar(
             paddingStart = 32.dp,
             onClick = {
                 onTabSelected(SettingsScreenState.SettingsTab.SticksCurve)
-            },
-        )
-
-        SidebarItem(
-            title = "MAVLINK CONSOLE",
-            selected = selectedTab == SettingsScreenState.SettingsTab.MavlinkConsole,
-            onClick = {
-                onTabSelected(SettingsScreenState.SettingsTab.MavlinkConsole)
             },
         )
 

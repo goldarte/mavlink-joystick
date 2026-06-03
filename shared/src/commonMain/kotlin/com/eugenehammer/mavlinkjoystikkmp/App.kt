@@ -13,7 +13,9 @@ import androidx.navigation3.ui.NavDisplay
 import androidx.savedstate.serialization.SavedStateConfiguration
 import com.eugenehammer.mavlinkjoystikkmp.di.platformModule
 import com.eugenehammer.mavlinkjoystikkmp.di.sharedModule
+import com.eugenehammer.mavlinkjoystikkmp.ui.console.compose.MavlinkConsoleScreen
 import com.eugenehammer.mavlinkjoystikkmp.ui.flight.compose.FlightScreen
+import com.eugenehammer.mavlinkjoystikkmp.ui.menu.compose.MenuScreen
 import com.eugenehammer.mavlinkjoystikkmp.ui.settings.compose.SettingsScreen
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.Serializable
@@ -29,7 +31,13 @@ sealed interface Route : NavKey
 data object Flight : Route
 
 @Serializable
+data object Menu : Route
+
+@Serializable
 data object Settings : Route
+
+@Serializable
+data object MavlinkConsole : Route
 
 @OptIn(ExperimentalSerializationApi::class)
 private val config = SavedStateConfiguration {
@@ -51,11 +59,23 @@ fun App() {
                 val entryProvider: (NavKey) -> NavEntry<NavKey> = entryProvider {
                     entry<Flight> {
                         FlightScreen(
-                            openSettings = { backStack.add(Settings) }
+                            openMenu = { backStack.add(Menu) }
+                        )
+                    }
+                    entry<Menu> {
+                        MenuScreen(
+                            onJoystickClick = { backStack.removeLastOrNull() },
+                            onConsoleClick = { backStack.add(MavlinkConsole) },
+                            onSettingsClick = { backStack.add(Settings) }
                         )
                     }
                     entry<Settings> {
                         SettingsScreen(
+                            goBack = { backStack.removeLastOrNull() }
+                        )
+                    }
+                    entry<MavlinkConsole> {
+                        MavlinkConsoleScreen(
                             goBack = { backStack.removeLastOrNull() }
                         )
                     }

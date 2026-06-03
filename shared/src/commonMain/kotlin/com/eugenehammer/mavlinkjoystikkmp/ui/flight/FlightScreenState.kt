@@ -30,5 +30,5 @@ data class FlightScreenState(
 }
 
 sealed interface FlightScreenEvent {
-    data object GoToSettings : FlightScreenEvent
+    data object GoToMenu : FlightScreenEvent
 }

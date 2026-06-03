@@ -48,10 +48,6 @@ class SettingsViewModel(
                 pitchParams = defaultCurveParams,
                 yawParams = defaultCurveParams,
                 throttleParams = defaultCurveParams
-            ),
-            consoleState = SettingsScreenState.ConsoleState(
-                log = "",
-                input = ""
             )
         )
     )
@@ -104,11 +100,6 @@ class SettingsViewModel(
                         )
                     )
                 }
-            }
-        }
-        viewModelScope.launch {
-            mavlinkManager.consoleFlow.collectLatest { log ->
-                _state.update { it.copy(consoleState = it.consoleState.copy(log = log)) }
             }
         }
     }
@@ -232,19 +223,6 @@ class SettingsViewModel(
 
     fun onExpoChangeFinished() {
         viewModelScope.launch { saveExpoForAxis() }
-    }
-
-    fun onConsoleInputChange(value: String) {
-        _state.update { it.copy(consoleState = it.consoleState.copy(input = value)) }
-    }
-
-    fun sendConsoleMessage() {
-        val text = state.value.consoleState.input.trim()
-
-        if (text.isEmpty()) return
-
-        mavlinkManager.sendSerialControl(text)
-        _state.update { it.copy(consoleState = it.consoleState.copy(input = "")) }
     }
 
     private fun SettingsScreenState.StickCurveSettingsState.copyWeightForAxis(value: Float): SettingsScreenState.StickCurveSettingsState =

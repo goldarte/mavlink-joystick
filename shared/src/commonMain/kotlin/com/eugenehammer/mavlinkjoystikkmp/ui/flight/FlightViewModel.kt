@@ -159,8 +159,8 @@ class FlightViewModel(
         pushChannels()
     }
 
-    fun onSettingsButtonClicked() {
-        viewModelScope.launch { _events.emit(FlightScreenEvent.GoToSettings) }
+    fun onMenuButtonClicked() {
+        viewModelScope.launch { _events.emit(FlightScreenEvent.GoToMenu) }
     }
 
     fun onArmClick() {
