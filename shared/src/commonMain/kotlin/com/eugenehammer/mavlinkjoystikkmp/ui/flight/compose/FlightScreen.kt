@@ -57,19 +57,20 @@ fun FlightScreen(
         modifier = modifier
             .fillMaxSize()
             .background(Color(0xFF0D0D0D))
-            .systemBarsPadding()
-            .padding(6.dp)
+            //.systemBarsPadding()
+            .padding(horizontal = 0.dp, vertical = 0.dp)
     ) {
 
         // ══════════════ LEFT STICK ══════════════
 
         Box(
             modifier = Modifier
-                .weight(0.355f)
+                .weight(0.38f)
                 .fillMaxHeight()
         ) {
 
             Joystick(
+                modifier = Modifier.align(Alignment.Center),
                 state = state.leftJoystickState,
                 onChanged = vm::onLeftStickChanged,
             )
@@ -101,13 +102,13 @@ fun FlightScreen(
             }
         }
 
-        Spacer(Modifier.width(6.dp))
+        Spacer(Modifier.width(8.dp))
 
         // ══════════════ CENTER PANEL ══════════════
 
         Column(
             modifier = Modifier
-                .weight(0.278f)
+                .weight(0.24f)
                 .fillMaxHeight()
         ) {
 
@@ -272,17 +273,18 @@ fun FlightScreen(
             }
         }
 
-        Spacer(Modifier.width(6.dp))
+        Spacer(Modifier.width(8.dp))
 
         // ══════════════ RIGHT STICK ══════════════
 
         Box(
             modifier = Modifier
-                .weight(0.355f)
+                .weight(0.38f)
                 .fillMaxHeight()
         ) {
 
             Joystick(
+                modifier = Modifier.align(Alignment.Center),
                 state = state.rightJoystickState,
                 onChanged = vm::onRightStickChanged,
             )

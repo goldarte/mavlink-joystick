@@ -22,6 +22,7 @@ import kotlin.math.sqrt
 
 @Composable
 fun Joystick(
+    modifier: Modifier = Modifier,
     state: FlightScreenState.JoystickState,
     onChanged: (Float, Float) -> Unit,
 ) {
@@ -36,7 +37,7 @@ fun Joystick(
     val currentState by rememberUpdatedState(state)
 
     Canvas(
-        modifier = Modifier
+        modifier = modifier
             .aspectRatio(1f)
             .onSizeChanged {
                 canvasWidth = it.width.toFloat()
