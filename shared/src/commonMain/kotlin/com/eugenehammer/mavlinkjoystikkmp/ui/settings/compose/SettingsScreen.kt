@@ -132,12 +132,10 @@ fun SettingsScreen(
                         StickCurveSettingsScreen(
                             state = state.curveSettingsState,
                             onAxisSelected = vm::onCurveParamsAxisSelected,
-                            onWeightChange = vm::onWeightChange,
-                            onWeightChangeFinished = vm::onWeightChangeFinished,
-                            onOffsetChange = vm::onOffsetChange,
-                            onOffsetChangeFinished = vm::onOffsetChangeFinished,
                             onExpoChange = vm::onExpoChange,
-                            onExpoChangeFinished = vm::onExpoChangeFinished
+                            onExpoChangeFinished = vm::onExpoChangeFinished,
+                            onWeightChange = vm::onWeightChange,
+                            onWeightChangeFinished = vm::onWeightChangeFinished
                         )
                     }
                 }

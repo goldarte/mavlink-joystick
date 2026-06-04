@@ -37,12 +37,10 @@ private val AccentColor = Color(0xFFFF5C8D)
 fun StickCurveSettingsScreen(
     state: SettingsScreenState.StickCurveSettingsState,
     onAxisSelected: (SettingsScreenState.StickCurveSettingsState.StickAxis) -> Unit,
-    onWeightChange: (Float) -> Unit,
-    onWeightChangeFinished: () -> Unit,
-    onOffsetChange: (Float) -> Unit,
-    onOffsetChangeFinished: () -> Unit,
     onExpoChange: (Float) -> Unit,
     onExpoChangeFinished: () -> Unit,
+    onWeightChange: (Float) -> Unit,
+    onWeightChangeFinished: () -> Unit,
 ) {
     val params = when (state.selectedAxis) {
         SettingsScreenState.StickCurveSettingsState.StickAxis.Roll -> state.rollParams
@@ -93,6 +91,17 @@ fun StickCurveSettingsScreen(
                     .verticalScroll(rememberScrollState()),
             ) {
                 SliderBlock(
+                    title = "Expo",
+                    value = params.expo,
+                    valueText = "${(params.expo * 100).toInt()}%",
+                    valueRange = 0f..1f,
+                    onValueChange = onExpoChange,
+                    onValueChangeFinished = onExpoChangeFinished,
+                )
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                SliderBlock(
                     title = "Weight",
                     value = params.weight,
                     valueText = "${(params.weight * 100).toInt()}%",
@@ -100,29 +109,6 @@ fun StickCurveSettingsScreen(
                     onValueChange = onWeightChange,
                     onValueChangeFinished = onWeightChangeFinished,
                 )
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                SliderBlock(
-                    title = "Offset",
-                    value = params.offset,
-                    valueText = "${(params.offset * 100).toInt()}%",
-                    valueRange = -1f..1f,
-                    onValueChange = onOffsetChange,
-                    onValueChangeFinished = onOffsetChangeFinished,
-                )
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                SliderBlock(
-                    title = "Expo",
-                    value = params.expo,
-                    valueText = "${(params.expo * 100).toInt()}%",
-                    valueRange = -1f..1f,
-                    onValueChange = onExpoChange,
-                    onValueChangeFinished = onExpoChangeFinished,
-                )
-
             }
 
             Spacer(modifier = Modifier.width(24.dp))
@@ -136,7 +122,6 @@ fun StickCurveSettingsScreen(
             ) {
                 CurveGraph(
                     weight = params.weight,
-                    offset = params.offset,
                     expo = params.expo,
                     modifier = Modifier.fillMaxSize(),
                 )
@@ -194,7 +179,6 @@ private val CurveColor = Color(0xFFFF5C8D)
 @Composable
 fun CurveGraph(
     weight: Float,
-    offset: Float,
     expo: Float,
     modifier: Modifier = Modifier,
 ) {
@@ -246,7 +230,7 @@ fun CurveGraph(
                 val yOutput = CurveUtils.applyCurve(
                     xInput,
                     weight,
-                    offset,
+                    0f,
                     expo
                 )
 
