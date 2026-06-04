@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
@@ -45,7 +46,7 @@ fun StickSizeSettingsScreen(
         Spacer(Modifier.height(16.dp))
 
         StickSlider(
-            title = "Left Stick",
+            title = "Left",
             factor = state.leftFactor,
             onChange = onLeftStickFactorChanged,
             onDragEnded = onLeftStickFactorDragEnded
@@ -54,7 +55,7 @@ fun StickSizeSettingsScreen(
         Spacer(Modifier.height(16.dp))
 
         StickSlider(
-            title = "Right Stick",
+            title = "Right",
             factor = state.rightFactor,
             onChange = onRightStickFactorChanged,
             onDragEnded = onRightStickFactorDragEnded
@@ -72,6 +73,7 @@ fun StickSizeSettingsScreen(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun StickSlider(
     title: String,
@@ -80,6 +82,11 @@ private fun StickSlider(
     onDragEnded: () -> Unit,
 ) {
     val percent = (factor * 100).toInt()
+
+    val sliderColors = SliderDefaults.colors(
+        thumbColor = Color(0xFFFF5C8D),
+        activeTrackColor = Color(0xFFFF5C8D),
+    )
 
     Text(
         text = "$title Stick: $percent%",
@@ -95,10 +102,13 @@ private fun StickSlider(
         onValueChange = onChange,
         onValueChangeFinished = onDragEnded,
         valueRange = 0.5f..1.0f,
-        steps = 49, // roughly same density as SeekBar(max=50)
-        colors = SliderDefaults.colors(
-            thumbColor = Color(0xFFFF5C8D),
-            activeTrackColor = Color(0xFFFF5C8D),
-        ),
+        colors = sliderColors,
+        track = { sliderState ->
+            SliderDefaults.Track(
+                sliderState = sliderState,
+                drawStopIndicator = null,
+                colors = sliderColors
+            )
+        }
     )
 }

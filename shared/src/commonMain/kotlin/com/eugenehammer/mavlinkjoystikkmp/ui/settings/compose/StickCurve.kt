@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Slider
@@ -144,6 +145,7 @@ fun StickCurveSettingsScreen(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun SliderBlock(
     title: String,
@@ -163,15 +165,24 @@ private fun SliderBlock(
             modifier = Modifier.padding(bottom = 8.dp),
         )
 
+        val sliderColors = SliderDefaults.colors(
+            thumbColor = AccentColor,
+            activeTrackColor = AccentColor,
+        )
+
         Slider(
             value = value,
             onValueChange = onValueChange,
             onValueChangeFinished = onValueChangeFinished,
             valueRange = valueRange,
-            colors = SliderDefaults.colors(
-                thumbColor = AccentColor,
-                activeTrackColor = AccentColor,
-            ),
+            colors = sliderColors,
+            track = { sliderState ->
+                SliderDefaults.Track(
+                    sliderState = sliderState,
+                    drawStopIndicator = null,
+                    colors = sliderColors
+                )
+            }
         )
     }
 }
