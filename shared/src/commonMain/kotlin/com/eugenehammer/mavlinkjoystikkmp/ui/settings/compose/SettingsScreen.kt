@@ -186,7 +186,7 @@ private fun SettingsSidebar(
 ) {
     Column(
         modifier = Modifier
-            .width(140.dp)
+            .width(180.dp)
             .fillMaxHeight()
             .background(SurfaceColor)
             .windowInsetsPadding(WindowInsets.navigationBars)
@@ -205,9 +205,10 @@ private fun SettingsSidebar(
             text = "STICKS",
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 6.dp, vertical = 6.dp),
+                .padding(horizontal = 16.dp, vertical = 6.dp),
             color = InactiveColor,
             fontFamily = FontFamily.Monospace,
+            style = MaterialTheme.typography.bodySmall,
         )
 
         SidebarItem(
@@ -240,7 +241,7 @@ private fun SettingsSidebar(
         Spacer(modifier = Modifier.weight(1f))
 
         Text(
-            text = "© 2026 Arthur Golubtsov",
+            text = "(c) 2026\nArthur Golubtsov\nEugene Molotkov",
             modifier = Modifier
                 .padding(horizontal = 16.dp, vertical = 6.dp),
             color = FooterColor,
@@ -284,7 +285,7 @@ private fun SidebarItem(
     selected: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    paddingStart: Dp = 6.dp,
+    paddingStart: Dp = 16.dp,
 ) {
     Text(
         text = title,
@@ -293,7 +294,7 @@ private fun SidebarItem(
             .clickable(onClick = onClick)
             .padding(
                 start = paddingStart,
-                end = 16.dp,
+                end = 6.dp,
                 top = 6.dp,
                 bottom = 6.dp,
             ),
