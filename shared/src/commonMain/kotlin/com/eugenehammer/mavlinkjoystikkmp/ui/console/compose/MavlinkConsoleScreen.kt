@@ -34,6 +34,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.eugenehammer.mavlinkjoystikkmp.ui.ToggleOrientationButton
 import com.eugenehammer.mavlinkjoystikkmp.ui.console.MavlinkConsoleViewModel
 import org.koin.compose.viewmodel.koinViewModel
 
@@ -88,6 +89,10 @@ fun MavlinkConsoleScreen(
             Row(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
+                ToggleOrientationButton()
+
+                Spacer(Modifier.width(8.dp))
+
                 TextField(
                     value = state.input,
                     onValueChange = vm::onInputChange,

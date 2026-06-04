@@ -13,6 +13,8 @@ import androidx.navigation3.ui.NavDisplay
 import androidx.savedstate.serialization.SavedStateConfiguration
 import com.eugenehammer.mavlinkjoystikkmp.di.platformModule
 import com.eugenehammer.mavlinkjoystikkmp.di.sharedModule
+import com.eugenehammer.mavlinkjoystikkmp.ui.Orientation
+import com.eugenehammer.mavlinkjoystikkmp.ui.OrientationLock
 import com.eugenehammer.mavlinkjoystikkmp.ui.console.compose.MavlinkConsoleScreen
 import com.eugenehammer.mavlinkjoystikkmp.ui.flight.compose.FlightScreen
 import com.eugenehammer.mavlinkjoystikkmp.ui.menu.compose.MenuScreen
@@ -58,11 +60,13 @@ fun App() {
                 val backStack = rememberNavBackStack(config, Flight)
                 val entryProvider: (NavKey) -> NavEntry<NavKey> = entryProvider {
                     entry<Flight> {
+                        OrientationLock(Orientation.Landscape)
                         FlightScreen(
                             openMenu = { backStack.add(Menu) }
                         )
                     }
                     entry<Menu> {
+                        OrientationLock(Orientation.Landscape)
                         MenuScreen(
                             onJoystickClick = { backStack.removeLastOrNull() },
                             onConsoleClick = { backStack.add(MavlinkConsole) },
@@ -70,11 +74,13 @@ fun App() {
                         )
                     }
                     entry<Settings> {
+                        OrientationLock(Orientation.Landscape)
                         SettingsScreen(
                             goBack = { backStack.removeLastOrNull() }
                         )
                     }
                     entry<MavlinkConsole> {
+                        OrientationLock(Orientation.All)
                         MavlinkConsoleScreen(
                             goBack = { backStack.removeLastOrNull() }
                         )
