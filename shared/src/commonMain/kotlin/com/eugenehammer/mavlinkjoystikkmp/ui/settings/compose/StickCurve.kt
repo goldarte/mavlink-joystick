@@ -90,16 +90,18 @@ fun StickCurveSettingsScreen(
                     .fillMaxHeight()
                     .verticalScroll(rememberScrollState()),
             ) {
-                SliderBlock(
-                    title = "Expo",
-                    value = params.expo,
-                    valueText = "${(params.expo * 100).toInt()}%",
-                    valueRange = 0f..1f,
-                    onValueChange = onExpoChange,
-                    onValueChangeFinished = onExpoChangeFinished,
-                )
+                if (state.selectedAxis != SettingsScreenState.StickCurveSettingsState.StickAxis.Throttle) {
+                    SliderBlock(
+                        title = "Expo",
+                        value = params.expo,
+                        valueText = "${(params.expo * 100).toInt()}%",
+                        valueRange = 0f..1f,
+                        onValueChange = onExpoChange,
+                        onValueChangeFinished = onExpoChangeFinished,
+                    )
 
-                Spacer(modifier = Modifier.height(24.dp))
+                    Spacer(modifier = Modifier.height(24.dp))
+                }
 
                 SliderBlock(
                     title = "Weight",
