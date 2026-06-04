@@ -46,7 +46,7 @@ internal fun ArtificialHorizon(
 
     val ladderTextStyle = TextStyle(
         color = Color.White,
-        fontSize = 12.sp,
+        fontSize = 10.sp,
         fontFamily = FontFamily.Monospace
     )
 
@@ -62,7 +62,7 @@ internal fun ArtificialHorizon(
         val center = Offset(cx, cy)
 
         val bezelRadius =
-            min(size.width, size.height) / 2f * 0.96f
+            min(size.width, size.height) / 2f * 0.92f
 
         val innerRadius =
             bezelRadius * 0.84f
@@ -170,7 +170,7 @@ internal fun ArtificialHorizon(
                         y = cy + pitchOffset
                     ),
 
-                    strokeWidth = 2.dp.toPx()
+                    strokeWidth = 1.5.dp.toPx()
                 )
 
                 // ════════════════════════════════════
@@ -231,7 +231,7 @@ internal fun ArtificialHorizon(
                         topLeft = Offset(
                             x = cx +
                                     halfLength +
-                                    12.dp.toPx(),
+                                    3.dp.toPx(),
 
                             y = y -
                                     rightText.size.height / 2f
@@ -247,7 +247,7 @@ internal fun ArtificialHorizon(
                             x = cx -
                                     halfLength -
                                     leftText.size.width -
-                                    12.dp.toPx(),
+                                    3.dp.toPx(),
 
                             y = y -
                                     leftText.size.height / 2f
@@ -280,9 +280,9 @@ internal fun ArtificialHorizon(
                 val inner =
                     scaleRadius -
                             if (deg % 30 == 0) {
-                                18f
+                                15f
                             } else {
-                                10f
+                                8f
                             }
 
                 drawLine(
@@ -304,7 +304,7 @@ internal fun ArtificialHorizon(
                                 inner * sin(rad).toFloat()
                     ),
 
-                    strokeWidth = 2.dp.toPx()
+                    strokeWidth = 1.5.dp.toPx()
                 )
             }
 
@@ -333,7 +333,7 @@ internal fun ArtificialHorizon(
                     y = cy
                 ),
 
-                strokeWidth = 4.dp.toPx()
+                strokeWidth = 2.5.dp.toPx()
             )
 
             drawLine(
@@ -349,7 +349,7 @@ internal fun ArtificialHorizon(
                     y = cy + wingHeight * 0.6f
                 ),
 
-                strokeWidth = 4.dp.toPx()
+                strokeWidth = 2.5.dp.toPx()
             )
 
             // Right wing
@@ -367,7 +367,7 @@ internal fun ArtificialHorizon(
                     y = cy
                 ),
 
-                strokeWidth = 4.dp.toPx()
+                strokeWidth = 2.5.dp.toPx()
             )
 
             drawLine(
@@ -383,14 +383,14 @@ internal fun ArtificialHorizon(
                     y = cy + wingHeight * 0.6f
                 ),
 
-                strokeWidth = 4.dp.toPx()
+                strokeWidth = 2.5.dp.toPx()
             )
 
             // Center dot
 
             drawCircle(
                 color = aircraftColor,
-                radius = 6.dp.toPx(),
+                radius = 4.dp.toPx(),
                 center = center
             )
         }
@@ -407,7 +407,7 @@ internal fun ArtificialHorizon(
             center = center,
 
             style = Stroke(
-                width = 5.dp.toPx()
+                width = 3.dp.toPx()
             )
         )
 

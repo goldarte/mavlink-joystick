@@ -78,7 +78,7 @@ internal fun Compass(
             useCenter = false,
             topLeft = arcRect.topLeft,
             size = arcRect.size,
-            style = Stroke(12.dp.toPx())
+            style = Stroke(6.dp.toPx())
         )
 
         drawArc(
@@ -88,7 +88,7 @@ internal fun Compass(
             useCenter = false,
             topLeft = arcRect.topLeft,
             size = arcRect.size,
-            style = Stroke(12.dp.toPx())
+            style = Stroke(6.dp.toPx())
         )
 
         drawArc(
@@ -98,7 +98,7 @@ internal fun Compass(
             useCenter = false,
             topLeft = arcRect.topLeft,
             size = arcRect.size,
-            style = Stroke(12.dp.toPx())
+            style = Stroke(6.dp.toPx())
         )
 
         // ════════════════════════════════════════════
@@ -130,7 +130,7 @@ internal fun Compass(
                         cx + inner * cos(angleRad).toFloat(),
                         cy + inner * sin(angleRad).toFloat()
                     ),
-                    strokeWidth = 2.5.dp.toPx()
+                    strokeWidth = 1.5.dp.toPx()
                 )
 
             } else {
@@ -139,7 +139,7 @@ internal fun Compass(
 
                 drawCircle(
                     color = Color(0xFFAAAAAA),
-                    radius = 2.5f,
+                    radius = 2f,
                     center = Offset(
                         cx + dotDist * cos(angleRad).toFloat(),
                         cy + dotDist * sin(angleRad).toFloat()
@@ -206,7 +206,7 @@ internal fun Compass(
             drawPath(
                 path = path,
                 color = Color.White,
-                style = Stroke(2.5.dp.toPx())
+                style = Stroke(1.5.dp.toPx())
             )
         }
     }
