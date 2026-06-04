@@ -95,7 +95,7 @@ private fun StickSlider(
         fontFamily = FontFamily.Monospace,
     )
 
-    Spacer(Modifier.height(8.dp))
+    Spacer(Modifier.height(4.dp))
 
     Slider(
         value = factor,
