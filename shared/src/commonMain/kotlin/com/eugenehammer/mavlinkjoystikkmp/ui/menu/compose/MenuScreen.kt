@@ -72,7 +72,7 @@ fun MenuScreen(
                     onClick = onConsoleClick
                 )
                 MenuItem(
-                    label = "\nSETTINGS",
+                    label = "SETTINGS\n",
                     iconContent = { SettingsIcon() },
                     onClick = onSettingsClick
                 )
