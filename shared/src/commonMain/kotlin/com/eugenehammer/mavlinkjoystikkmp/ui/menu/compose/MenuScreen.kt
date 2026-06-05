@@ -8,14 +8,13 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Terminal
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -26,12 +25,16 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlin.math.cos
 import kotlin.math.min
+import kotlin.math.sin
 
 private val BackgroundColor = Color(0xFF0D0D0D)
 private val SurfaceColor = Color(0xFF1E1E1E)
@@ -40,122 +43,176 @@ private val JoystickKnobColor = Color(0xFFFF5C8D)
 
 @Composable
 fun MenuScreen(
-    onJoystickClick: () -> Unit,
     onConsoleClick: () -> Unit,
     onSettingsClick: () -> Unit,
+    onJoystickClick: () -> Unit,
 ) {
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(BackgroundColor),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+            .background(BackgroundColor)
     ) {
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(32.dp),
-            verticalAlignment = Alignment.CenterVertically
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
         ) {
-            MenuItem(
-                iconContent = { JoystickIcon(modifier = Modifier.size(48.dp)) },
-                label = "Joystick",
-                onClick = onJoystickClick
-            )
-            MenuItem(
-                icon = Icons.Default.Terminal,
-                label = "Mavlink\nConsole",
-                onClick = onConsoleClick
-            )
-            MenuItem(
-                icon = Icons.Default.Settings,
-                label = "Settings",
-                onClick = onSettingsClick
-            )
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(24.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                MenuItem(
+                    label = "MAVLINK JOYSTICK",
+                    iconContent = { JoystickIcon() },
+                    onClick = onJoystickClick
+                )
+                MenuItem(
+                    label = "MAVLINK CONSOLE",
+                    iconContent = { ConsoleIcon() },
+                    onClick = onConsoleClick
+                )
+                MenuItem(
+                    label = "\nSETTINGS",
+                    iconContent = { SettingsIcon() },
+                    onClick = onSettingsClick
+                )
+            }
         }
     }
 }
 
 @Composable
 private fun JoystickIcon(modifier: Modifier = Modifier) {
-    Canvas(modifier = modifier) {
-        val cx = size.width / 2f
-        val cy = size.height / 2f
-        val radius = min(size.width, size.height) / 2f
-        val outerRingRadius = radius * 0.9f
-        val knobRadius = radius * 0.35f
-        
-        // Draw outer ring
+    Canvas(modifier = modifier.fillMaxSize()) {
+        val center = Offset(size.width / 2, size.height / 2)
+        val radius = min(size.width, size.height) / 2.5f
+
+        // Outer ring - thinned
         drawCircle(
-            color = Color.White.copy(alpha = 0.2f),
-            radius = outerRingRadius,
-            center = Offset(cx, cy),
+            color = IconColor.copy(alpha = 0.8f),
+            radius = radius,
+            center = center,
             style = Stroke(width = 2.dp.toPx())
         )
-        
-        // Draw inner circle fill
-        drawCircle(
-            color = Color.White.copy(alpha = 0.05f),
-            radius = outerRingRadius,
-            center = Offset(cx, cy)
-        )
 
-        // Draw crosshairs
-        val crossColor = Color.White.copy(alpha = 0.2f)
-        val crossStrokeWidth = 1.dp.toPx()
-        
+        // Axis lines - thinned
         drawLine(
-            color = crossColor,
-            start = Offset(cx - outerRingRadius, cy),
-            end = Offset(cx + outerRingRadius, cy),
-            strokeWidth = crossStrokeWidth
+            color = IconColor.copy(alpha = 0.5f),
+            start = Offset(center.x - radius * 0.8f, center.y),
+            end = Offset(center.x + radius * 0.8f, center.y),
+            strokeWidth = 1.dp.toPx()
         )
-        
         drawLine(
-            color = crossColor,
-            start = Offset(cx, cy - outerRingRadius),
-            end = Offset(cx, cy + outerRingRadius),
-            strokeWidth = crossStrokeWidth
+            color = IconColor.copy(alpha = 0.5f),
+            start = Offset(center.x, center.y - radius * 0.8f),
+            end = Offset(center.x, center.y + radius * 0.8f),
+            strokeWidth = 1.dp.toPx()
         )
 
-        val knobOffset = Offset(cx, cy)
-
-        // Draw knob glow
+        // Inner circle/knob
         drawCircle(
             brush = Brush.radialGradient(
-                colors = listOf(
-                    JoystickKnobColor.copy(alpha = 0.33f),
-                    Color.Transparent,
-                ),
-                center = knobOffset,
-                radius = knobRadius * 2.2f,
+                colors = listOf(JoystickKnobColor, JoystickKnobColor.copy(alpha = 0.8f)),
+                center = center,
+                radius = radius * 0.4f
             ),
-            radius = knobRadius * 2.2f,
-            center = knobOffset,
+            radius = radius * 0.4f,
+            center = center
         )
+    }
+}
 
-        // Draw knob
-        drawCircle(
-            brush = Brush.radialGradient(
-                colors = listOf(
-                    JoystickKnobColor,
-                    JoystickKnobColor.copy(alpha = 0.8f),
-                ),
-                center = Offset(
-                    knobOffset.x,
-                    knobOffset.y - knobRadius * 0.3f,
-                ),
-                radius = knobRadius,
-            ),
-            radius = knobRadius,
-            center = knobOffset,
+@Composable
+private fun ConsoleIcon(modifier: Modifier = Modifier) {
+    Canvas(modifier = modifier.fillMaxSize()) {
+        val strokeWidth = 2.dp.toPx()
+        val color = IconColor.copy(alpha = 0.8f)
+        
+        // Draw ">" prompt
+        val promptStart = size.width * 0.25f
+        val promptWidth = size.width * 0.15f
+        val promptHeight = size.height * 0.3f
+        val centerY = size.height / 2
+        
+        drawLine(
+            color = color,
+            start = Offset(promptStart, centerY - promptHeight / 2),
+            end = Offset(promptStart + promptWidth, centerY),
+            strokeWidth = strokeWidth
         )
+        drawLine(
+            color = color,
+            start = Offset(promptStart + promptWidth, centerY),
+            end = Offset(promptStart, centerY + promptHeight / 2),
+            strokeWidth = strokeWidth
+        )
+        
+        // Draw "_" cursor
+        val cursorStart = promptStart + promptWidth + 6.dp.toPx()
+        val cursorWidth = size.width * 0.2f
+        val cursorY = centerY + promptHeight / 2
+        
+        drawLine(
+            color = color,
+            start = Offset(cursorStart, cursorY),
+            end = Offset(cursorStart + cursorWidth, cursorY),
+            strokeWidth = strokeWidth
+        )
+    }
+}
 
-        // Knob border
+@Composable
+private fun SettingsIcon(modifier: Modifier = Modifier) {
+    Canvas(modifier = modifier.fillMaxSize()) {
+        val strokeWidth = 2.dp.toPx()
+        val color = IconColor.copy(alpha = 0.8f)
+        val center = Offset(size.width / 2, size.height / 2)
+        
+        val innerRadius = size.width * 0.06f
+        val outerRadius = size.width * 0.28f
+        val toothLength = size.width * 0.07f
+        
+        // Inner circle (hub)
         drawCircle(
-            color = Color.White.copy(alpha = 0.8f),
-            radius = knobRadius,
-            center = knobOffset,
-            style = Stroke(width = 1.5.dp.toPx()),
+            color = color,
+            radius = innerRadius,
+            center = center,
+            style = Stroke(width = strokeWidth/2)
         )
+        
+        // Outer ring (rim)
+        drawCircle(
+            color = color,
+            radius = outerRadius,
+            center = center,
+            style = Stroke(width = strokeWidth)
+        )
+        
+        // Gear teeth
+        val teethCount = 8
+        val toothWidth = 7.dp.toPx()
+        
+        for (i in 0 until teethCount) {
+            val angle = (i * 360f / teethCount).toDouble()
+            val rad = (angle * 3.141592653589793 / 180.0)
+            
+            val start = Offset(
+                (center.x + cos(rad) * outerRadius).toFloat(),
+                (center.y + sin(rad) * outerRadius).toFloat()
+            )
+            val end = Offset(
+                (center.x + cos(rad) * (outerRadius + toothLength)).toFloat(),
+                (center.y + sin(rad) * (outerRadius + toothLength)).toFloat()
+            )
+            
+            drawLine(
+                color = color,
+                start = start,
+                end = end,
+                strokeWidth = toothWidth,
+                cap = StrokeCap.Butt
+            )
+        }
     }
 }
 
@@ -168,14 +225,17 @@ private fun MenuItem(
 ) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
         modifier = Modifier
+            .width(160.dp)
+            .aspectRatio(1f)
             .clip(RoundedCornerShape(12.dp))
             .background(SurfaceColor)
             .clickable(onClick = onClick)
-            .padding(24.dp)
+            .padding(16.dp)
     ) {
         Box(
-            modifier = Modifier.size(48.dp),
+            modifier = Modifier.size(64.dp),
             contentAlignment = Alignment.Center
         ) {
             if (iconContent != null) {
@@ -184,18 +244,19 @@ private fun MenuItem(
                 Icon(
                     imageVector = icon,
                     contentDescription = label,
-                    modifier = Modifier.size(48.dp),
+                    modifier = Modifier.size(64.dp),
                     tint = IconColor
                 )
             }
         }
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(16.dp))
         Text(
             text = label,
             color = Color.White,
             fontSize = 14.sp,
             fontFamily = FontFamily.Monospace,
-            style = MaterialTheme.typography.labelLarge
+            style = MaterialTheme.typography.labelLarge,
+            textAlign = TextAlign.Center
         )
     }
 }
