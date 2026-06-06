@@ -58,7 +58,7 @@ fun FlightScreen(
             .fillMaxSize()
             .background(Color(0xFF0D0D0D))
             //.systemBarsPadding()
-            .padding(horizontal = 0.dp, vertical = 0.dp)
+            .padding(horizontal = 1.dp, vertical = 0.dp)
     ) {
 
         // ══════════════ LEFT STICK ══════════════
@@ -102,7 +102,7 @@ fun FlightScreen(
             }
         }
 
-        Spacer(Modifier.width(8.dp))
+        Spacer(Modifier.width(7.dp))
 
         // ══════════════ CENTER PANEL ══════════════
 
@@ -273,7 +273,7 @@ fun FlightScreen(
             }
         }
 
-        Spacer(Modifier.width(8.dp))
+        Spacer(Modifier.width(7.dp))
 
         // ══════════════ RIGHT STICK ══════════════
 
