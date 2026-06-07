@@ -7,6 +7,7 @@ import com.goldarte.mavlinkjoystick.data.AppSettings
 import com.goldarte.mavlinkjoystick.mavlink.MavlinkEvent
 import com.goldarte.mavlinkjoystick.mavlink.MavlinkManager
 import com.goldarte.mavlinkjoystick.utils.CurveUtils
+import com.goldarte.mavlinkjoystick.utils.format
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -118,7 +119,7 @@ class FlightViewModel(
                     }
 
                     is MavlinkEvent.BatteryVoltageReceived -> {
-                        _uiState.update { it.copy(batteryVoltage = "${event.voltage}V") }
+                        _uiState.update { it.copy(batteryVoltage = "${event.voltage.format(1)}V") }
                     }
 
                     is MavlinkEvent.FlightModeReceived -> {

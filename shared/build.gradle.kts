@@ -76,6 +76,12 @@ kotlin {
                 implementation(libs.datastore.preferences)
             }
         }
+
+        val commonTest by getting {
+            dependencies {
+                implementation(kotlin("test"))
+            }
+        }
     }
 }
 
