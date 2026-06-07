@@ -1,12 +1,12 @@
 # Mavlink Joystick
 
-User-friendly joystick for controlling vehicles and robots via MAVLink protocol. Supports Flix/ArduPilot/PX4 drones out-of-the-box.
+User-friendly iOS/Android joystick for controlling vehicles and robots via MAVLink protocol. Supports Flix/ArduPilot/PX4 drones out-of-the-box.
 
 ![](app_screen.png)
 
 ## Features
 
-- **MAVLink v2 over UDP** - control any vehicle or robot with MANUAL_CONTROL message support from your Android smartphone via WiFi
+- **MAVLink v2 over UDP** - control any vehicle or robot with MANUAL_CONTROL message from your iOS/Android smartphone via WiFi
 - **Customizable sticks** - size, appearance and even curve for each axis can be changed
 - **Artificial horizon and compass** - intuitive orientation visualization from ATTITUDE_QUATERNION message
 - **Status bar** - armed/voltage/mode display
@@ -14,9 +14,18 @@ User-friendly joystick for controlling vehicles and robots via MAVLink protocol.
 
 ## Build
 
-- Clone this project
-- Install Android Studio Panda 4 (if not installed)
-- Open the project in Android Studio → Build → Run
+This is [Kotlin Multiplatform](https://www.jetbrains.com/help/kotlin-multiplatform-dev/get-started.html) application, so you can build the app for iOS and Android.
+
+### Build and Run Android Application
+
+- Open this repo in Android Studio (Panda 4 is recommended)
+- To build and run the development version of the Android app, use the run configuration from Android Studio toolbar (androidApp)
+
+### Build and Run iOS Application
+
+- Get something with MacOS
+- To build and run the development version of the iOS app, open [iosApp.xcodeproj](./iosApp/iosApp.xcodeproj) in Xcode and run it from there
+- After that you will be able to run iOS app from Android Studio
 
 ## Connect to drone
 
