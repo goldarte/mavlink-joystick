@@ -10,7 +10,7 @@ plugins {
 
 compose {
     resources {
-        packageOfResClass = "com.eugenehammer.mavlinkjoystikkmp.shared"
+        packageOfResClass = "com.goldarte.mavlinkjoystick.shared"
         generateResClass = auto
     }
 }
@@ -19,7 +19,7 @@ compose {
 
 kotlin {
     android {
-        namespace = "com.eugenehammer.mavlinkjoystikkmp.shared"
+        namespace = "com.goldarte.mavlinkjoystick.shared"
         compileSdk = libs.versions.android.compileSdk.get().toInt()
         minSdk = libs.versions.android.minSdk.get().toInt()
 

@@ -1,6 +1,6 @@
 TEAM_ID=
 
-PRODUCT_NAME=Mavlink Joystick
+PRODUCT_NAME=MavlinkJoystickIOS
 PRODUCT_BUNDLE_IDENTIFIER=com.goldarte.mavlinkjoystick.iosapp$(TEAM_ID)
 
 CURRENT_PROJECT_VERSION=2

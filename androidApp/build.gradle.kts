@@ -21,11 +21,11 @@ kotlin {
 }
 
 android {
-    namespace = "com.eugenehammer.mavlinkjoystikkmp"
+    namespace = "com.goldarte.mavlinkjoystick"
     compileSdk = libs.versions.android.compileSdk.get().toInt()
 
     defaultConfig {
-        applicationId = "com.eugenehammer.mavlinkjoystikkmp"
+        applicationId = "com.goldarte.mavlinkjoystick"
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
         versionCode = 1
