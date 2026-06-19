@@ -177,7 +177,7 @@ internal fun ArtificialHorizon(
                 // Pitch ladder
                 // ════════════════════════════════════
 
-                val ladderSteps = (-90..90 step 10).toList()
+                val ladderSteps = (-90..90 step 10).toList() - 0
 
                 ladderSteps.forEach { deg ->
 
