@@ -53,7 +53,6 @@ class FlightViewModel(
     init {
         subscribeOnSettings()
         observeMavlink()
-        mavlinkManager.start()
     }
 
     private fun subscribeOnSettings() {
@@ -79,13 +78,23 @@ class FlightViewModel(
                         )
                     )
                 }
-                mavlinkManager.stop()
-                mavlinkManager.targetHost = newSettings.host
-                mavlinkManager.targetPort = newSettings.port
-                mavlinkManager.listenPort = newSettings.listenPort
-                mavlinkManager.droneSystemId = newSettings.droneSystemId
-                mavlinkManager.droneComponentId = newSettings.droneComponentId
-                mavlinkManager.autoDetect = newSettings.autoDetect
+                // Discovery updates the manager before saving settings. Persisting that
+                // address (or changing joystick appearance) must not tear down the link.
+                val connectionChanged = mavlinkManager.targetHost != newSettings.host ||
+                    mavlinkManager.targetPort != newSettings.port ||
+                    mavlinkManager.listenPort != newSettings.listenPort ||
+                    mavlinkManager.droneSystemId != newSettings.droneSystemId ||
+                    mavlinkManager.droneComponentId != newSettings.droneComponentId ||
+                    mavlinkManager.autoDetect != newSettings.autoDetect
+                if (connectionChanged) {
+                    mavlinkManager.stop()
+                    mavlinkManager.targetHost = newSettings.host
+                    mavlinkManager.targetPort = newSettings.port
+                    mavlinkManager.listenPort = newSettings.listenPort
+                    mavlinkManager.droneSystemId = newSettings.droneSystemId
+                    mavlinkManager.droneComponentId = newSettings.droneComponentId
+                    mavlinkManager.autoDetect = newSettings.autoDetect
+                }
                 mavlinkManager.start()
             }
         }
@@ -224,8 +233,6 @@ class FlightViewModel(
     override fun onCleared() {
         super.onCleared()
 
-        viewModelScope.launch {
-            mavlinkManager.stop()
-        }
+        mavlinkManager.stop()
     }
 }
