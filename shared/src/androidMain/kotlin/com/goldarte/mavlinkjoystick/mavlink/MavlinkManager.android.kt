@@ -178,14 +178,27 @@ class MavlinkManagerAndroid(
     /** Send MAV_CMD_COMPONENT_ARM_DISARM (400). */
     override fun sendArmCommand(arm: Boolean) {
         scope.launch {
-            val command = CommandLong.builder()
-                .targetSystem(droneSystemId)
-                .targetComponent(droneComponentId)
-                .command(MavCmd.MAV_CMD_COMPONENT_ARM_DISARM)
-                .param1(if (arm) 1f else 0f)
-                .build()
-            sendMavlinkMessage(command)
+            synchronized(this@MavlinkManagerAndroid) {
+                if (arm) {
+                    stickZ = 0
+                    stickR = 0
+                    // Send the reset before ARM, without waiting for the 50 Hz loop.
+                    sendManualControl()
+                }
+                val command = CommandLong.builder()
+                    .targetSystem(droneSystemId)
+                    .targetComponent(droneComponentId)
+                    .command(MavCmd.MAV_CMD_COMPONENT_ARM_DISARM)
+                    .param1(if (arm) 1f else 0f)
+                    .build()
+                sendMavlinkMessage(command)
+            }
         }
+    }
+
+    @Synchronized
+    override fun setChannels(roll: Float, pitch: Float, throttle: Float, yaw: Float) {
+        super.setChannels(roll, pitch, throttle, yaw)
     }
 
     /** Send a command via SERIAL_CONTROL (msg #126) with DEV_SHELL flag. */

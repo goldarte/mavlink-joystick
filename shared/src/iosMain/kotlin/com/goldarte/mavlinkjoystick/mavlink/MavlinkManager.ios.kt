@@ -116,6 +116,12 @@ class MavlinkManagerIOS(
 
     override fun sendArmCommand(arm: Boolean) {
         scope.launch {
+            if (arm) {
+                stickZ = 0
+                stickR = 0
+                // Both packets are sent in order on the main dispatcher.
+                sendManualControl()
+            }
             sendMavlinkMessage(
                 msgId = MSG_COMMAND_LONG,
                 crcExtra = CRC_COMMAND_LONG,
