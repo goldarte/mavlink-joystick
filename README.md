@@ -27,6 +27,27 @@ This is [Kotlin Multiplatform](https://www.jetbrains.com/help/kotlin-multiplatfo
 - To build and run the development version of the iOS app, open [iosApp.xcodeproj](./iosApp/iosApp.xcodeproj) in Xcode and run it from there
 - After that you will be able to run iOS app from Android Studio
 
+### Local tests
+
+Every Android application build (APK or AAB, including Android Studio Run) and
+iOS Kotlin framework build (including Xcode Build/Run/Archive) runs the shared
+`commonTest` and `androidHostTest` suites through `:shared:localTests`. A failing
+test stops the build. Tests run again even if their sources have not changed;
+compilation still uses Gradle's incremental build and cache.
+
+The tests run on the JVM and require the Android SDK and JDK used for Android
+builds, including when building from Xcode. No emulator or connected device is
+needed. This covers all current tests; it does not run tests on the iOS runtime.
+
+To run them without building the app:
+
+```shell
+./gradlew :shared:localTests
+```
+
+The HTML report is saved to
+`shared/build/reports/tests/testAndroidHostTest/index.html`.
+
 ## Connect to drone
 
 App listens 14550 udp port by default and connects to first drone, which sends MAVLink heartbeat. You can change listen port in connection settings.
