@@ -99,7 +99,7 @@ fun MavlinkConsoleScreen(
             Row(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                ToggleOrientationButton()
+                ToggleOrientationButton(onClick = vm::toggleOrientation)
 
                 Spacer(Modifier.width(8.dp))
 

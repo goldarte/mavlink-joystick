@@ -2,8 +2,10 @@ package com.goldarte.mavlinkjoystick
 
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation3.runtime.NavEntry
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
@@ -12,6 +14,7 @@ import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
 import androidx.savedstate.serialization.SavedStateConfiguration
 import com.goldarte.mavlinkjoystick.di.platformModule
+import com.goldarte.mavlinkjoystick.data.AppSettings
 import com.goldarte.mavlinkjoystick.di.sharedModule
 import com.goldarte.mavlinkjoystick.ui.Orientation
 import com.goldarte.mavlinkjoystick.ui.OrientationLock
@@ -24,6 +27,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.modules.SerializersModule
 import kotlinx.serialization.modules.polymorphic
 import org.koin.compose.KoinApplication
+import org.koin.compose.koinInject
 import org.koin.dsl.koinConfiguration
 
 @Serializable
@@ -58,15 +62,28 @@ fun App() {
         content = {
             MaterialTheme {
                 val backStack = rememberNavBackStack(config, Flight)
+                val appSettings = koinInject<AppSettings>()
+                // Keep the preference collected while the menu is visible, before
+                // creating a new console entry. null means storage has not loaded yet.
+                val consoleLandscape by appSettings.consoleLandscape
+                    .collectAsStateWithLifecycle<Boolean?>(initialValue = null)
+                val isConsole = backStack.lastOrNull() == MavlinkConsole
+                val orientation = when {
+                    !isConsole -> Orientation.Landscape
+                    consoleLandscape == null -> null
+                    consoleLandscape == true -> Orientation.Landscape
+                    else -> Orientation.Portrait
+                }
+                // One owner for orientation: outgoing navigation entries must not
+                // reset the orientation requested by the incoming screen.
+                orientation?.let { OrientationLock(it) }
                 val entryProvider: (NavKey) -> NavEntry<NavKey> = entryProvider {
                     entry<Flight> {
-                        OrientationLock(Orientation.Landscape)
                         FlightScreen(
                             openMenu = { backStack.add(Menu) }
                         )
                     }
                     entry<Menu> {
-                        OrientationLock(Orientation.Landscape)
                         MenuScreen(
                             onJoystickClick = { backStack.removeLastOrNull() },
                             onConsoleClick = { backStack.add(MavlinkConsole) },
@@ -74,16 +91,18 @@ fun App() {
                         )
                     }
                     entry<Settings> {
-                        OrientationLock(Orientation.Landscape)
                         SettingsScreen(
                             goBack = { backStack.removeLastOrNull() }
                         )
                     }
                     entry<MavlinkConsole> {
-                        OrientationLock(Orientation.All)
-                        MavlinkConsoleScreen(
-                            goBack = { backStack.removeLastOrNull() }
-                        )
+                        // On a cold restore, do not show a console with an assumed
+                        // orientation while the persisted preference is still loading.
+                        if (consoleLandscape != null) {
+                            MavlinkConsoleScreen(
+                                goBack = { backStack.removeLastOrNull() }
+                            )
+                        }
                     }
                 }
 

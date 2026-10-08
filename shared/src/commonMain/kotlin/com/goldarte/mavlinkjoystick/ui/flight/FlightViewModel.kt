@@ -50,10 +50,13 @@ class FlightViewModel(
     private val _events = MutableSharedFlow<FlightScreenEvent>()
     val events = _events.asSharedFlow()
 
+    // Keep the arming reset at an actual zero, even with configured channel offsets,
+    // until the user moves the left stick again.
+    private var leftStickResetForArming = false
+
     init {
         subscribeOnSettings()
         observeMavlink()
-        mavlinkManager.start()
     }
 
     private fun subscribeOnSettings() {
@@ -79,13 +82,23 @@ class FlightViewModel(
                         )
                     )
                 }
-                mavlinkManager.stop()
-                mavlinkManager.targetHost = newSettings.host
-                mavlinkManager.targetPort = newSettings.port
-                mavlinkManager.listenPort = newSettings.listenPort
-                mavlinkManager.droneSystemId = newSettings.droneSystemId
-                mavlinkManager.droneComponentId = newSettings.droneComponentId
-                mavlinkManager.autoDetect = newSettings.autoDetect
+                // Discovery updates the manager before saving settings. Persisting that
+                // address (or changing joystick appearance) must not tear down the link.
+                val connectionChanged = mavlinkManager.targetHost != newSettings.host ||
+                    mavlinkManager.targetPort != newSettings.port ||
+                    mavlinkManager.listenPort != newSettings.listenPort ||
+                    mavlinkManager.droneSystemId != newSettings.droneSystemId ||
+                    mavlinkManager.droneComponentId != newSettings.droneComponentId ||
+                    mavlinkManager.autoDetect != newSettings.autoDetect
+                if (connectionChanged) {
+                    mavlinkManager.stop()
+                    mavlinkManager.targetHost = newSettings.host
+                    mavlinkManager.targetPort = newSettings.port
+                    mavlinkManager.listenPort = newSettings.listenPort
+                    mavlinkManager.droneSystemId = newSettings.droneSystemId
+                    mavlinkManager.droneComponentId = newSettings.droneComponentId
+                    mavlinkManager.autoDetect = newSettings.autoDetect
+                }
                 mavlinkManager.start()
             }
         }
@@ -137,6 +150,7 @@ class FlightViewModel(
     }
 
     fun onLeftStickChanged(x: Float, y: Float) {
+        if (x != 0f || y != 0f) leftStickResetForArming = false
         _uiState.update {
             it.copy(
                 leftJoystickState = it.leftJoystickState.copy(
@@ -169,6 +183,11 @@ class FlightViewModel(
             if (uiState.value.armed) {
                 mavlinkManager.sendArmCommand(false)
             } else {
+                leftStickResetForArming = true
+                _uiState.update {
+                    it.copy(leftJoystickState = it.leftJoystickState.copy(valueX = 0f, valueY = 0f))
+                }
+                pushChannels()
                 mavlinkManager.sendArmCommand(true)
             }
         }
@@ -196,36 +215,32 @@ class FlightViewModel(
                 expo = pitchExpo,
             )
 
-            val yaw = CurveUtils.applyCurve(
+            val yaw = if (leftStickResetForArming) 0f else CurveUtils.applyCurve(
                 value = _uiState.value.leftJoystickState.valueX,
                 weight = yawWeight,
                 offset = yawOffset,
                 expo = yawExpo,
             )
 
-            val throttle = CurveUtils.applyCurve(
+            val throttle = if (leftStickResetForArming) 0f else CurveUtils.applyCurve(
                 value = _uiState.value.leftJoystickState.valueY,
                 weight = throttleWeight,
                 offset = throttleOffset,
                 expo = throttleExpo,
             )
 
-            viewModelScope.launch {
-                mavlinkManager.setChannels(
-                    roll = roll,
-                    pitch = pitch,
-                    throttle = throttle,
-                    yaw = yaw,
-                )
-            }
+            mavlinkManager.setChannels(
+                roll = roll,
+                pitch = pitch,
+                throttle = throttle,
+                yaw = yaw,
+            )
         }
     }
 
     override fun onCleared() {
         super.onCleared()
 
-        viewModelScope.launch {
-            mavlinkManager.stop()
-        }
+        mavlinkManager.stop()
     }
 }

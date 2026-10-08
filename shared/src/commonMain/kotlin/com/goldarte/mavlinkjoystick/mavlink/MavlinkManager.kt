@@ -66,7 +66,7 @@ abstract class BaseMavlinkManager(
     protected var stickY: Int = 0
     protected var stickZ: Int = 0
     protected var stickR: Int = 0
-    protected var lastHeartbeat: Long = 0L
+    protected var lastHeartbeat: Long? = null
 
     private var autopilotName: String = "---"
 
@@ -86,16 +86,18 @@ abstract class BaseMavlinkManager(
     }
 
     protected fun resetDiscovery() {
-        inited = false
+        inited = !autoDetect
+        lastHeartbeat = null
+        isArmed = false
         isConnected = false
         emitConnectionState()
     }
 
     protected fun refreshConnection(now: Long, timeoutMillis: Long = MAVLINK_HEARTBEAT_TIMEOUT_MS) {
-        val nowConnected = (now - lastHeartbeat) < timeoutMillis
-        if (nowConnected != isConnected) {
-            isConnected = nowConnected
-            emitConnectionState()
+        val heartbeat = lastHeartbeat ?: return
+        if (now - heartbeat >= timeoutMillis) {
+            // A new Wi-Fi network may contain a controller with a different address or ID.
+            resetDiscovery()
         }
     }
 
