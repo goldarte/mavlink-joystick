@@ -82,7 +82,7 @@ class MavlinkUdpReconnectTest {
                 assertEquals(42, manager.droneSystemId)
                 assertEquals(controller.localPort, manager.targetPort)
             }
-            withTimeout(5000) { manager.connectionState.first { !it.connected } }
+            withTimeout(5000.milliseconds) { manager.connectionState.first { !it.connected } }
             DatagramSocket().use { newController ->
                 connect(manager, newController, systemId = 43)
                 assertEquals(43, manager.droneSystemId)

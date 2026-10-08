@@ -88,6 +88,7 @@ abstract class BaseMavlinkManager(
     protected fun resetDiscovery() {
         inited = !autoDetect
         lastHeartbeat = null
+        isArmed = false
         isConnected = false
         emitConnectionState()
     }
