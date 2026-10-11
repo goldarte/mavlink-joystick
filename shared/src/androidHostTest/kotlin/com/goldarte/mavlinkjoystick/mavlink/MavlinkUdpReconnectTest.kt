@@ -115,8 +115,11 @@ class MavlinkUdpReconnectTest {
         }
     }
 
-    private fun createManager() = MavlinkManagerAndroid(null, testAppSettings()).apply {
-        listenPort = DatagramSocket(0).use { it.localPort }
+    private fun createManager(): MavlinkManagerAndroid {
+        val binder = FakeNetworkBinder().apply { connect("test-wifi") }
+        return MavlinkManagerAndroid(null, testAppSettings(), binder).apply {
+            listenPort = DatagramSocket(0).use { it.localPort }
+        }
     }
 
     private suspend fun connect(manager: MavlinkManagerAndroid, controller: DatagramSocket, systemId: Int) {
