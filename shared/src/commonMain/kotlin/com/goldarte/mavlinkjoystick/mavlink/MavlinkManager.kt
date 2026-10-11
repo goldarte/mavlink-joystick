@@ -68,6 +68,12 @@ abstract class BaseMavlinkManager(
     protected var stickR: Int = 0
     protected var lastHeartbeat: Long? = null
 
+    /**
+     * Deadline after which a lost link clears the screen. Set when the link times out and cleared
+     * by every heartbeat, so a drone that reconnects in time keeps the readings on screen.
+     */
+    private var screenResetAt: Long? = null
+
     private var autopilotName: String = "---"
 
     override fun setChannels(roll: Float, pitch: Float, throttle: Float, yaw: Float) {
@@ -94,10 +100,22 @@ abstract class BaseMavlinkManager(
     }
 
     protected fun refreshConnection(now: Long, timeoutMillis: Long = MAVLINK_HEARTBEAT_TIMEOUT_MS) {
-        val heartbeat = lastHeartbeat ?: return
-        if (now - heartbeat >= timeoutMillis) {
+        val heartbeat = lastHeartbeat
+        if (heartbeat != null && now - heartbeat >= timeoutMillis) {
             // A new Wi-Fi network may contain a controller with a different address or ID.
             resetDiscovery()
+            // Emitted only once: resetDiscovery clears lastHeartbeat, and a returning heartbeat
+            // clears the reset deadline below.
+            emitEvent(MavlinkEvent.ConnectionLost)
+            screenResetAt = now + SCREEN_RESET_AFTER_DISCONNECT_TIMEOUT_MS
+        }
+
+        // The screen keeps the last telemetry while the drone may still reconnect; it is cleared
+        // only after it has been gone long enough to be treated as a real disconnect.
+        val resetAt = screenResetAt ?: return
+        if (now >= resetAt) {
+            screenResetAt = null
+            emitEvent(MavlinkEvent.ScreenReset)
         }
     }
 
@@ -118,6 +136,8 @@ abstract class BaseMavlinkManager(
         now: Long,
     ) {
         lastHeartbeat = now
+        // The drone is back, so there is nothing to clear on screen.
+        screenResetAt = null
         val beforeConnected = isConnected
         isConnected = true
 
@@ -256,6 +276,15 @@ data class MavlinkConnectionState(
 )
 
 sealed interface MavlinkEvent {
+    /** The link stopped delivering heartbeats. Readings stay on screen in case the drone returns. */
+    data object ConnectionLost : MavlinkEvent
+
+    /**
+     * The link has been down for [SCREEN_RESET_AFTER_DISCONNECT_TIMEOUT_MS] without a heartbeat,
+     * so the screen should show its app-start state instead of stale telemetry.
+     */
+    data object ScreenReset : MavlinkEvent
+
     data class AttitudeReceived(
         val roll: Float,
         val pitch: Float,
@@ -275,4 +304,10 @@ sealed interface MavlinkEvent {
 }
 
 const val MAVLINK_HEARTBEAT_TIMEOUT_MS = 3000L
+
+/**
+ * How long a lost link is tolerated before the flight screen is cleared. A drone may reconnect
+ * several seconds after losing contact, and its readings are still useful until then.
+ */
+const val SCREEN_RESET_AFTER_DISCONNECT_TIMEOUT_MS = 10_000L
 private const val MAV_MODE_FLAG_SAFETY_ARMED = 0x80

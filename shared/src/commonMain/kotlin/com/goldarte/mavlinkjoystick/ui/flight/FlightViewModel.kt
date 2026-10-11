@@ -17,6 +17,41 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+/**
+ * Presentation used on app start and whenever the link is lost: no telemetry is known yet, so
+ * every reading is a placeholder. Joystick fields are filled in per instance.
+ */
+private val APP_START_STATE = FlightScreenState(
+    armed = false,
+    batteryVoltage = "--.-V",
+    flightMode = "---",
+    autopilotName = "---",
+    connectionStatus = null,
+    rollDeg = 0f,
+    pitchDeg = 0f,
+    yawHeading = 0f,
+    leftJoystickState = FlightScreenState.JoystickState(
+        valueX = 0f,
+        valueY = 0f,
+        isThrottleMode = true,
+        showCircularArea = true,
+        showSquareArea = true,
+        showCircleBoundaries = true,
+        stickSizeFactor = 0.65f,
+        knobColor = Color(0xFFFF5C8D),
+    ),
+    rightJoystickState = FlightScreenState.JoystickState(
+        valueX = 0f,
+        valueY = 0f,
+        isThrottleMode = false,
+        showCircularArea = true,
+        showSquareArea = true,
+        showCircleBoundaries = true,
+        stickSizeFactor = 0.65f,
+        knobColor = Color(0xFFFF5C8D),
+    ),
+)
+
 class FlightViewModel(
     private val mavlinkManager: MavlinkManager,
     private val appSettings: AppSettings,
@@ -31,20 +66,7 @@ class FlightViewModel(
         stickSizeFactor = 0.65f,
         knobColor = Color(0xFFFF5C8D),
     )
-    private val _uiState = MutableStateFlow(
-        FlightScreenState(
-            armed = false,
-            batteryVoltage = "--.-V",
-            flightMode = "---",
-            autopilotName = "---",
-            connectionStatus = null,
-            rollDeg = 0f,
-            pitchDeg = 0f,
-            yawHeading = 0f,
-            leftJoystickState = leftJoystickInitialState,
-            rightJoystickState = leftJoystickInitialState.copy(isThrottleMode = false)
-        ),
-    )
+    private val _uiState = MutableStateFlow(initialState())
     val uiState: StateFlow<FlightScreenState> = _uiState.asStateFlow()
 
     private val _events = MutableSharedFlow<FlightScreenEvent>()
@@ -53,6 +75,35 @@ class FlightViewModel(
     // Keep the arming reset at an actual zero, even with configured channel offsets,
     // until the user moves the left stick again.
     private var leftStickResetForArming = false
+
+    /**
+     * State shown on app start, also used when the link times out so a dropped connection cannot
+     * leave stale telemetry on screen. The joystick visuals are re-applied from settings as soon
+     * as they are collected.
+     */
+    private fun initialState() = APP_START_STATE.copy(
+        leftJoystickState = leftJoystickInitialState,
+        rightJoystickState = leftJoystickInitialState.copy(isThrottleMode = false),
+    )
+
+    /**
+     * Restores the app-start presentation after the link timeout without touching stick values or
+     * the configured joystick appearance.
+     */
+    private fun resetConnectionDisplay() {
+        _uiState.update { state ->
+            state.copy(
+                armed = APP_START_STATE.armed,
+                batteryVoltage = APP_START_STATE.batteryVoltage,
+                flightMode = APP_START_STATE.flightMode,
+                autopilotName = APP_START_STATE.autopilotName,
+                connectionStatus = APP_START_STATE.connectionStatus,
+                rollDeg = APP_START_STATE.rollDeg,
+                pitchDeg = APP_START_STATE.pitchDeg,
+                yawHeading = APP_START_STATE.yawHeading,
+            )
+        }
+    }
 
     init {
         subscribeOnSettings()
@@ -144,6 +195,12 @@ class FlightViewModel(
                     }
 
                     is MavlinkEvent.StatusTextReceived -> Unit
+
+                    // The link is only briefly gone; keep the readings so a reconnect is seamless.
+                    is MavlinkEvent.ConnectionLost -> Unit
+
+                    // The drone has been gone long enough that the readings cannot be trusted.
+                    is MavlinkEvent.ScreenReset -> resetConnectionDisplay()
                 }
             }
         }
