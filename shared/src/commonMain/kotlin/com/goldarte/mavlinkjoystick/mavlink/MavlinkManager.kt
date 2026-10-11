@@ -69,12 +69,13 @@ abstract class BaseMavlinkManager(
     protected var lastHeartbeat: Long? = null
 
     /**
-     * Deadline after which a lost link clears the screen. Set when the link times out and cleared
-     * by every heartbeat, so a drone that reconnects in time keeps the readings on screen.
+     * Deadline after which a lost link clears the screen, arm flag included. Set when the link
+     * times out and cleared by every heartbeat, so a drone that reconnects in time keeps the
+     * readings on screen.
      */
     private var screenResetAt: Long? = null
 
-    private var autopilotName: String = "---"
+    private var autopilotName: String = AUTOPILOT_NAME_UNKNOWN
 
     override fun setChannels(roll: Float, pitch: Float, throttle: Float, yaw: Float) {
         stickX = axisToManual(roll)
@@ -94,7 +95,6 @@ abstract class BaseMavlinkManager(
     protected fun resetDiscovery() {
         inited = !autoDetect
         lastHeartbeat = null
-        isArmed = false
         isConnected = false
         emitConnectionState()
     }
@@ -110,11 +110,20 @@ abstract class BaseMavlinkManager(
             screenResetAt = now + SCREEN_RESET_AFTER_DISCONNECT_TIMEOUT_MS
         }
 
-        // The screen keeps the last telemetry while the drone may still reconnect; it is cleared
-        // only after it has been gone long enough to be treated as a real disconnect.
+        // The screen keeps the last telemetry and the last known arm state while the drone may
+        // still reconnect; everything is cleared only after it has been gone long enough to be
+        // treated as a real disconnect.
         val resetAt = screenResetAt ?: return
         if (now >= resetAt) {
             screenResetAt = null
+            // A fresh app start is disarmed and knows nothing about the drone: the cached readings
+            // are dropped as well, otherwise the next heartbeat would look like a repeat of a value
+            // the screen no longer shows and would never be reported again.
+            if (isArmed) {
+                isArmed = false
+                emitConnectionState()
+            }
+            autopilotName = AUTOPILOT_NAME_UNKNOWN
             emitEvent(MavlinkEvent.ScreenReset)
         }
     }
@@ -310,4 +319,7 @@ const val MAVLINK_HEARTBEAT_TIMEOUT_MS = 3000L
  * several seconds after losing contact, and its readings are still useful until then.
  */
 const val SCREEN_RESET_AFTER_DISCONNECT_TIMEOUT_MS = 10_000L
+
+/** Shown until the drone reports, or after a screen reset re-reports, its autopilot. */
+private const val AUTOPILOT_NAME_UNKNOWN = "---"
 private const val MAV_MODE_FLAG_SAFETY_ARMED = 0x80

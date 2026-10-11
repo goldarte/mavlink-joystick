@@ -42,17 +42,8 @@ class MavlinkWifiSwitchTest {
             // The telemetry access point appears and the drone answers the GCS heartbeats that the
             // manager already sends while the link is still down.
             DatagramSocket().use { controller ->
-                controller.meetManager(manager)
                 binder.connect("flix-wifi")
-                val heard = assertNotNull(
-                    controller.awaitMavlinkHeartbeat(3_000.milliseconds),
-                    "manager must greet a new Wi-Fi network with a heartbeat",
-                )
-                controller.sendHeartbeatTo(heard.origin, manager.listenPort, systemId = 7)
-                assertTrue(
-                    controller.awaitDiscovered(manager, systemId = 7),
-                    "drone must be discovered after it answers on the new network",
-                )
+                controller.awaitControllerGreeting(manager, systemId = 7)
             }
             assertTrue(manager.connectionState.value.connected)
         } finally {
@@ -220,6 +211,33 @@ class MavlinkWifiSwitchTest {
     }
 
     private suspend fun DatagramSocket.completeDiscovery(
+        manager: MavlinkManagerAndroid,
+        systemId: Int,
+    ) {
+        meetManager(manager)
+        // A real drone answers the GCS heartbeat, but the manager may be mid-rebuild here, so this
+        // fake controller keeps announcing itself until it is discovered instead of racing it.
+        assertTrue(
+            withTimeoutOrNull(5_000.milliseconds) {
+                while (manager.droneSystemId != systemId || !manager.connectionState.value.connected) {
+                    sendHeartbeatTo(
+                        InetAddress.getLoopbackAddress() ?: InetAddress.getByName("127.0.0.1"),
+                        manager.listenPort,
+                        systemId,
+                    )
+                    delay(50.milliseconds)
+                }
+                true
+            } == true,
+            "controller $systemId was not discovered",
+        )
+    }
+
+    /**
+     * The manager must greet a network with a heartbeat before a drone can answer it. Kept for the
+     * tests that assert that greeting.
+     */
+    private suspend fun DatagramSocket.awaitControllerGreeting(
         manager: MavlinkManagerAndroid,
         systemId: Int,
     ) {

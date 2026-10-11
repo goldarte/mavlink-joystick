@@ -87,8 +87,9 @@ class FlightViewModel(
     )
 
     /**
-     * Restores the app-start presentation after the link timeout without touching stick values or
-     * the configured joystick appearance.
+     * Restores the app-start presentation once the drone has been gone for good, without touching
+     * stick values or the configured joystick appearance. The manager drops its arm flag at the
+     * same moment, so the button comes back disarmed in step with the link state.
      */
     private fun resetConnectionDisplay() {
         _uiState.update { state ->

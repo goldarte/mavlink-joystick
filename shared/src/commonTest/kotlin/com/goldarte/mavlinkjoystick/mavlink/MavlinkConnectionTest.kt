@@ -33,33 +33,86 @@ class MavlinkConnectionTest {
         assertTrue(manager.connectionState.value.armed)
         manager.tick(13_000)
         assertFalse(manager.connectionState.value.connected)
-        assertFalse(manager.connectionState.value.armed)
-        assertFalse(manager.isArmed)
+        // A lost link no longer disarms by itself: the last known state is kept so a short dropout
+        // does not fake a disarm.
+        assertTrue(manager.isArmed)
         assertFalse(manager.hasTarget)
         manager.heartbeat(20_000)
         assertTrue(manager.connectionState.value.connected)
-        assertFalse(manager.connectionState.value.armed)
+        assertFalse(manager.connectionState.value.armed, "the drone's heartbeat reports disarmed")
     }
 
     @Test
-    fun armedHeartbeatAfterReconnectionRestoresArmedState() {
+    fun armedStateSurvivesAShortLinkLoss() {
         val manager = TestManager()
         manager.heartbeat(10_000, armed = true)
         manager.tick(13_000)
-        assertFalse(manager.connectionState.value.armed)
+        assertTrue(manager.connectionState.value.armed, "link loss must not fake a disarm")
         manager.heartbeat(20_000, armed = true)
         assertTrue(manager.connectionState.value.connected)
         assertTrue(manager.connectionState.value.armed)
+        manager.heartbeat(21_000, armed = false)
+        assertFalse(manager.connectionState.value.armed, "the drone's own heartbeat disarms")
     }
 
     @Test
-    fun stoppingClearsArmedState() {
+    fun screenResetClearsTheArmStateThatOutlivedTheLinkLoss() {
+        val manager = TestManager()
+        manager.heartbeat(10_000, armed = true)
+
+        val lostAt = 13_000L
+        manager.tick(lostAt)
+        assertTrue(manager.isArmed, "the timeout alone keeps the last known state")
+
+        // Only the screen reset puts the app back to its start state, arm flag included.
+        manager.tick(lostAt + SCREEN_RESET_AFTER_DISCONNECT_TIMEOUT_MS - 1)
+        assertTrue(manager.isArmed, "the arm flag is cleared together with the screen")
+        manager.tick(lostAt + SCREEN_RESET_AFTER_DISCONNECT_TIMEOUT_MS)
+        assertFalse(manager.isArmed, "a fresh app start is disarmed")
+        assertFalse(manager.connectionState.value.armed)
+    }
+
+    @Test
+    fun screenResetMakesTheNextHeartbeatReportTheAutopilotNameAgain() {
+        val manager = TestManager()
+        val seen = mutableListOf<MavlinkEvent>()
+        manager.collectEvents { if (it is MavlinkEvent.AutopilotNameReceived) seen += it }
+
+        manager.heartbeat(10_000, autopilot = MavlinkAutopilot.ArduPilotMega)
+        assertEquals<List<MavlinkEvent>>(
+            listOf(MavlinkEvent.AutopilotNameReceived("ArduPilot")),
+            seen,
+        )
+
+        // The same autopilot is not re-reported on every following heartbeat.
+        manager.heartbeat(11_000, autopilot = MavlinkAutopilot.ArduPilotMega)
+        assertEquals(1, seen.size)
+
+        // The screen reset drops the cached name along with the rest of the readings, so a returning
+        // drone has to be able to refill it.
+        val lostAt = 14_000L
+        manager.tick(lostAt)
+        manager.tick(lostAt + SCREEN_RESET_AFTER_DISCONNECT_TIMEOUT_MS)
+        assertEquals(1, seen.size, "the reset itself reports nothing")
+
+        manager.heartbeat(30_000, autopilot = MavlinkAutopilot.ArduPilotMega)
+        assertEquals<List<MavlinkEvent>>(
+            listOf(
+                MavlinkEvent.AutopilotNameReceived("ArduPilot"),
+                MavlinkEvent.AutopilotNameReceived("ArduPilot"),
+            ),
+            seen,
+        )
+    }
+
+    @Test
+    fun stoppingClearsTheLinkButKeepsTheLastArmState() {
         val manager = TestManager()
         manager.heartbeat(10_000, armed = true)
         manager.stop()
         assertFalse(manager.connectionState.value.connected)
-        assertFalse(manager.connectionState.value.armed)
-        assertFalse(manager.isArmed)
+        // Only the link status is cleared; the arm flag is left to the drone to report.
+        assertTrue(manager.isArmed)
     }
 
     @Test
@@ -69,11 +122,11 @@ class MavlinkConnectionTest {
         manager.networkChanged()
         manager.tick(10_001)
         assertFalse(manager.connectionState.value.connected)
-        assertFalse(manager.connectionState.value.armed)
+        assertTrue(manager.isArmed, "changing network must not fake a disarm")
         assertFalse(manager.hasTarget)
         manager.heartbeat(11_000)
         assertTrue(manager.connectionState.value.connected)
-        assertFalse(manager.connectionState.value.armed)
+        assertFalse(manager.connectionState.value.armed, "the new heartbeat reports disarmed")
     }
 
     @Test
@@ -84,7 +137,7 @@ class MavlinkConnectionTest {
         manager.heartbeat(10_000, armed = true)
         manager.tick(13_000)
         assertFalse(manager.connectionState.value.connected)
-        assertFalse(manager.connectionState.value.armed)
+        assertTrue(manager.isArmed)
         assertTrue(manager.hasTarget)
     }
 
@@ -164,6 +217,8 @@ class MavlinkConnectionTest {
         assertTrue(seen.isEmpty(), "readings are still on screen, got $seen")
         manager.tick(28_000)
         assertEquals<List<MavlinkEvent>>(listOf(MavlinkEvent.ScreenReset), seen)
+        // The screen reset is also the moment the arm flag goes back to the app-start value.
+        assertFalse(manager.isArmed)
     }
 
     @Test
@@ -182,9 +237,13 @@ class MavlinkConnectionTest {
         val hasTarget get() = inited
         fun networkChanged() = resetDiscovery()
         fun tick(now: Long) = refreshConnection(now)
-        fun heartbeat(now: Long, armed: Boolean = false) {
+        fun heartbeat(
+            now: Long,
+            armed: Boolean = false,
+            autopilot: MavlinkAutopilot = MavlinkAutopilot.Generic,
+        ) {
             inited = true
-            handleHeartbeat(0, MavlinkAutopilot.Generic, if (armed) 0x80 else 0, now)
+            handleHeartbeat(0, autopilot, if (armed) 0x80 else 0, now)
         }
         fun collectEvents(collector: FlowCollector<MavlinkEvent>) {
             scope.launch { events.collect(collector) }
