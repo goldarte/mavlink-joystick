@@ -29,17 +29,7 @@ This is [Kotlin Multiplatform](https://www.jetbrains.com/help/kotlin-multiplatfo
 
 ### Local tests
 
-Every Android application build (APK or AAB, including Android Studio Run) and
-iOS Kotlin framework build (including Xcode Build/Run/Archive) runs the shared
-`commonTest` and `androidHostTest` suites through `:shared:localTests`. A failing
-test stops the build. Tests run again even if their sources have not changed;
-compilation still uses Gradle's incremental build and cache.
-
-The tests run on the JVM and require the Android SDK and JDK used for Android
-builds, including when building from Xcode. No emulator or connected device is
-needed. This covers all current tests; it does not run tests on the iOS runtime.
-
-To run them without building the app:
+Local tests are running during build phase and also can be run separately:
 
 ```shell
 ./gradlew :shared:localTests
