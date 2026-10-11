@@ -107,11 +107,23 @@ class MavlinkManagerIOS(
 
     private fun restartTransport() {
         closeTransport()
-        resetDiscovery()
-        lastListenHost = null
+        // A rebuilt socket is not a lost link: the drone may still be answering on the new path.
+        // The Wi-Fi path monitor re-notifies for reasons that have nothing to do with the network
+        // (returning to the foreground, for one), so reporting a disconnect here would blink
+        // NO LINK while the link never went down. The heartbeat timeout still reports a real loss.
+        rearmDiscovery()
         socketFd = openSocket()
         startSendLoop()
         startReceiveLoop()
+    }
+
+    /**
+     * Forgets the controller found by discovery so the next heartbeat re-learns its address, while
+     * keeping the link state and the heartbeat clock that decide whether the link is really gone.
+     */
+    private fun rearmDiscovery() {
+        inited = !autoDetect
+        lastListenHost = null
     }
 
     override fun sendArmCommand(arm: Boolean) {
@@ -157,9 +169,16 @@ class MavlinkManagerIOS(
     private fun startSendLoop() {
         sendJob = scope.launch {
             var lastHeartbeatSentTime = 0L
+            var previousTick = 0L
             while (isActive && running) {
                 val now = currentTimeMillis()
-                refreshConnection(now)
+                // A gap between our own ticks says nothing about the link: iOS suspends the app in
+                // the background and the main thread can be busy, while the heartbeats that arrived
+                // meanwhile are still queued in the socket. Skipping a single check gives the
+                // receive loop time to drain them, so waking up cannot blink NO LINK on a link that
+                // never went down. A real loss is still reported one tick later.
+                if (now - previousTick <= LOOP_STALL_TOLERANCE_MS) refreshConnection(now)
+                previousTick = now
                 // An early socket failure must not permanently disable discovery.
                 if (socketFd < 0) {
                     socketFd = openSocket()
@@ -666,6 +685,12 @@ private const val MANUAL_CONTROL_PAYLOAD_LEN = 11
 private const val COMMAND_LONG_PAYLOAD_LEN = 33
 private const val SERIAL_CONTROL_PAYLOAD_LEN = 79
 private const val SERIAL_CONTROL_DATA_LEN = 70
+
+/**
+ * A gap this long between two send-loop ticks means the process was stalled or suspended, so the
+ * ticks themselves cannot be used as evidence about the link.
+ */
+private const val LOOP_STALL_TOLERANCE_MS = 200L
 
 private const val MAV_CMD_COMPONENT_ARM_DISARM = 400
 private const val MAV_TYPE_GCS = 6

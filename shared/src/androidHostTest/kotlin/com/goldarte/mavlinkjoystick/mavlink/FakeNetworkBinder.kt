@@ -3,6 +3,14 @@ package com.goldarte.mavlinkjoystick.mavlink
 import java.net.DatagramSocket
 
 /**
+ * Port the manager is actually listening on. The transport deliberately falls back to an ephemeral
+ * port when the configured one is still held by the socket it just closed (a pending `receive()`
+ * defers the release), so a fake controller has to ask instead of assuming [MavlinkManager.listenPort].
+ */
+internal fun MavlinkManagerAndroid.listeningPort(): Int =
+    boundListenPort.takeIf { it > 0 } ?: listenPort
+
+/**
  * Stands in for ConnectivityManager in tests: a small set of named Wi-Fi networks that can appear,
  * receive an address later, carry traffic, or disappear.
  */

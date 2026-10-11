@@ -71,6 +71,13 @@ class MavlinkManagerAndroid internal constructor(
     private var networkListener: NetworkBinder.Listener? = null
     private var retryJob: Job? = null
 
+    /**
+     * Local port the transport actually listens on, or -1 while there is no socket. Differs from
+     * [listenPort] when the configured port was busy and an ephemeral one had to be used.
+     */
+    internal val boundListenPort: Int
+        get() = synchronized(this) { socket?.localPort ?: -1 }
+
     // ── Public API ───────────────────────────────────────────────────────────
 
     @Synchronized

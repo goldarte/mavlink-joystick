@@ -137,7 +137,16 @@ class MavlinkUdpReconnectTest {
         }.toByteArray()
         withTimeout(5000.milliseconds) {
             while (!manager.connectionState.value.connected) {
-                controller.send(DatagramPacket(bytes, bytes.size, InetAddress.getLoopbackAddress(), manager.listenPort))
+                controller.send(
+                    DatagramPacket(
+                        bytes,
+                        bytes.size,
+                        InetAddress.getLoopbackAddress(),
+                        // The configured port can be briefly busy after a rebuild, in which case the
+                        // manager listens on a fallback port instead.
+                        manager.listeningPort(),
+                    )
+                )
                 delay(50.milliseconds)
             }
         }

@@ -99,15 +99,11 @@ class MavlinkWifiSwitchTest {
             binder.connect("flix-wifi")
             DatagramSocket().use { controller ->
                 controller.meetManager(manager)
-                val heard = assertNotNull(
+                assertNotNull(
                     controller.awaitMavlinkHeartbeat(3_000.milliseconds),
                     "manager must keep greeting the network while the link is down",
                 )
-                controller.sendHeartbeatTo(heard.origin, manager.listenPort, systemId = 11)
-                assertTrue(
-                    controller.awaitDiscovered(manager, systemId = 11),
-                    "drone on the new network was not discovered",
-                )
+                controller.announceUntilDiscovered(manager, systemId = 11)
             }
             assertEquals(11, manager.droneSystemId)
         } finally {
@@ -215,23 +211,17 @@ class MavlinkWifiSwitchTest {
         systemId: Int,
     ) {
         meetManager(manager)
-        // A real drone answers the GCS heartbeat, but the manager may be mid-rebuild here, so this
-        // fake controller keeps announcing itself until it is discovered instead of racing it.
-        assertTrue(
-            withTimeoutOrNull(5_000.milliseconds) {
-                while (manager.droneSystemId != systemId || !manager.connectionState.value.connected) {
-                    sendHeartbeatTo(
-                        InetAddress.getLoopbackAddress() ?: InetAddress.getByName("127.0.0.1"),
-                        manager.listenPort,
-                        systemId,
-                    )
-                    delay(50.milliseconds)
-                }
-                true
-            } == true,
-            "controller $systemId was not discovered",
-        )
+        announceUntilDiscovered(manager, systemId)
     }
+
+    /**
+     * Ports and link state at the moment an expectation failed. A bound port that differs from the
+     * configured one means the transport fell back to an ephemeral port.
+     */
+    private fun DatagramSocket.linkDiagnostics(manager: MavlinkManagerAndroid): String =
+        "listenPort=${manager.listenPort}, boundPort=${manager.boundListenPort}, " +
+            "controllerPort=$localPort, droneSystemId=${manager.droneSystemId}, " +
+            "connected=${manager.connectionState.value.connected}, targetPort=${manager.targetPort}"
 
     /**
      * The manager must greet a network with a heartbeat before a drone can answer it. Kept for the
@@ -242,12 +232,33 @@ class MavlinkWifiSwitchTest {
         systemId: Int,
     ) {
         meetManager(manager)
-        val heard = assertNotNull(
+        assertNotNull(
             awaitMavlinkHeartbeat(3_000.milliseconds),
             "manager must broadcast a heartbeat for discovery",
         )
-        sendHeartbeatTo(heard.origin, manager.listenPort, systemId)
-        assertTrue(awaitDiscovered(manager, systemId), "controller $systemId was not discovered")
+        announceUntilDiscovered(manager, systemId)
+    }
+
+    /**
+     * Keeps answering the manager until it discovers this controller. A real drone answers the GCS
+     * heartbeat, but the manager is often mid-rebuild here and may even have had to move to a
+     * fallback port, so the fake controller re-reads where the manager actually listens instead of
+     * racing the rebuild or assuming the configured port.
+     */
+    private suspend fun DatagramSocket.announceUntilDiscovered(
+        manager: MavlinkManagerAndroid,
+        systemId: Int,
+    ) {
+        assertTrue(
+            withTimeoutOrNull(5_000.milliseconds) {
+                while (manager.droneSystemId != systemId || !manager.connectionState.value.connected) {
+                    sendHeartbeatTo(InetAddress.getLoopbackAddress(), manager.listeningPort(), systemId)
+                    delay(50.milliseconds)
+                }
+                true
+            } == true,
+            "controller $systemId was not discovered (${linkDiagnostics(manager)})",
+        )
     }
 
     /** Points the manager at this controller, like a drone whose address is already known. */
@@ -263,16 +274,6 @@ class MavlinkWifiSwitchTest {
             }
             true
         } == true
-
-    private suspend fun DatagramSocket.awaitDiscovered(
-        manager: MavlinkManagerAndroid,
-        systemId: Int,
-    ): Boolean = withTimeoutOrNull(3_000.milliseconds) {
-        while (manager.droneSystemId != systemId || !manager.connectionState.value.connected) {
-            delay(20.milliseconds)
-        }
-        true
-    } == true
 
     private fun DatagramSocket.sendHeartbeatTo(address: InetAddress, port: Int, systemId: Int) {
         val bytes = ByteArrayOutputStream().also {
