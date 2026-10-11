@@ -2,6 +2,7 @@ package com.goldarte.mavlinkjoystick.ui.console
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.goldarte.mavlinkjoystick.data.AppSettings
 import com.goldarte.mavlinkjoystick.mavlink.MavlinkManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -11,11 +12,12 @@ import kotlinx.coroutines.launch
 
 data class MavlinkConsoleState(
     val log: String = "",
-    val input: String = ""
+    val input: String = "",
 )
 
 class MavlinkConsoleViewModel(
     private val mavlinkManager: MavlinkManager,
+    private val appSettings: AppSettings,
 ) : ViewModel() {
     private val _state = MutableStateFlow(MavlinkConsoleState())
     val state = _state.asStateFlow()
@@ -26,6 +28,10 @@ class MavlinkConsoleViewModel(
                 _state.update { it.copy(log = log) }
             }
         }
+    }
+
+    fun toggleOrientation() {
+        viewModelScope.launch { appSettings.toggleConsoleOrientation() }
     }
 
     fun onInputChange(value: String) {

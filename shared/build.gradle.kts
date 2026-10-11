@@ -1,3 +1,4 @@
+import org.gradle.api.tasks.testing.Test
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
@@ -15,7 +16,17 @@ compose {
     }
 }
 
+val localTests = tasks.register("localTests") {
+    group = "verification"
+    description = "Runs common and Android host tests before local application builds."
+    dependsOn("testAndroidHostTest")
+}
 
+tasks.withType<Test>().configureEach {
+    if (name == "testAndroidHostTest") {
+        doNotTrackState("Local application builds must run the tests every time.")
+    }
+}
 
 kotlin {
     android {
@@ -31,6 +42,7 @@ kotlin {
         }
         withHostTest {
             isIncludeAndroidResources = true
+            isReturnDefaultValues = true
         }
     }
 
@@ -41,6 +53,9 @@ kotlin {
         iosTarget.binaries.framework {
             baseName = "MavlinkJoystick"
             isStatic = true
+            linkTaskProvider.configure {
+                dependsOn(localTests)
+            }
         }
     }
 
@@ -80,8 +95,8 @@ kotlin {
         val commonTest by getting {
             dependencies {
                 implementation(kotlin("test"))
+                implementation(libs.kotlinx.coroutines.test)
             }
         }
     }
 }
-

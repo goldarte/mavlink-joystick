@@ -14,11 +14,20 @@ import kotlinx.cinterop.usePinned
 import kotlinx.cinterop.value
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.IO
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.yield
+import platform.Network.nw_interface_type_wifi
+import platform.Network.nw_path_monitor_cancel
+import platform.Network.nw_path_monitor_create_with_type
+import platform.Network.nw_path_monitor_set_queue
+import platform.Network.nw_path_monitor_set_update_handler
+import platform.Network.nw_path_monitor_start
+import platform.Network.nw_path_monitor_t
+import platform.darwin.dispatch_get_main_queue
 import platform.posix.AF_INET
 import platform.posix.F_GETFL
 import platform.posix.F_SETFL
@@ -40,6 +49,7 @@ import platform.posix.sockaddr
 import platform.posix.sockaddr_in
 import platform.posix.socklen_tVar
 import platform.posix.socket
+import kotlin.time.Duration.Companion.milliseconds
 
 /**
  * iOS MAVLink UDP manager.
@@ -50,7 +60,9 @@ import platform.posix.socket
 class MavlinkManagerIOS(
     appSettings: AppSettings,
 ) : BaseMavlinkManager(appSettings) {
-    override val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    // UDP is nonblocking. Serialize socket lifecycle, packets and path updates
+    // on the main dispatcher so a closed descriptor cannot be reused by an old loop.
+    override val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private var sendJob: Job? = null
     private var recvJob: Job? = null
     private var running = false
@@ -58,35 +70,70 @@ class MavlinkManagerIOS(
     private var mavlinkSequence: Int = 0
     private var lastListenHost: String? = null
     private var lastListenPort: Int = targetPort
+    private var pathMonitor: nw_path_monitor_t = null
 
     override fun start() {
         if (running) return
         running = true
-        if (!autoDetect) inited = true
+        restartTransport()
 
-        socketFd = openSocket()
-        if (socketFd < 0) {
-            running = false
-            return
+        val monitor = nw_path_monitor_create_with_type(nw_interface_type_wifi)
+        pathMonitor = monitor
+        nw_path_monitor_set_queue(monitor, dispatch_get_main_queue())
+        nw_path_monitor_set_update_handler(monitor) {
+            scope.launch {
+                if (running && pathMonitor == monitor) restartTransport()
+            }
         }
-
-        startSendLoop()
-        startReceiveLoop()
+        nw_path_monitor_start(monitor)
     }
 
     override fun stop() {
         running = false
+        pathMonitor?.let { nw_path_monitor_cancel(it) }
+        pathMonitor = null
+        closeTransport()
+        resetDiscovery()
+    }
+
+    private fun closeTransport() {
         sendJob?.cancel()
         recvJob?.cancel()
         if (socketFd >= 0) {
             close(socketFd)
             socketFd = -1
         }
-        inited = false
+    }
+
+    private fun restartTransport() {
+        closeTransport()
+        // A rebuilt socket is not a lost link: the drone may still be answering on the new path.
+        // The Wi-Fi path monitor re-notifies for reasons that have nothing to do with the network
+        // (returning to the foreground, for one), so reporting a disconnect here would blink
+        // NO LINK while the link never went down. The heartbeat timeout still reports a real loss.
+        rearmDiscovery()
+        socketFd = openSocket()
+        startSendLoop()
+        startReceiveLoop()
+    }
+
+    /**
+     * Forgets the controller found by discovery so the next heartbeat re-learns its address, while
+     * keeping the link state and the heartbeat clock that decide whether the link is really gone.
+     */
+    private fun rearmDiscovery() {
+        inited = !autoDetect
+        lastListenHost = null
     }
 
     override fun sendArmCommand(arm: Boolean) {
         scope.launch {
+            if (arm) {
+                stickZ = 0
+                stickR = 0
+                // Both packets are sent in order on the main dispatcher.
+                sendManualControl()
+            }
             sendMavlinkMessage(
                 msgId = MSG_COMMAND_LONG,
                 crcExtra = CRC_COMMAND_LONG,
@@ -122,8 +169,24 @@ class MavlinkManagerIOS(
     private fun startSendLoop() {
         sendJob = scope.launch {
             var lastHeartbeatSentTime = 0L
-            while (running) {
+            var previousTick = 0L
+            while (isActive && running) {
                 val now = currentTimeMillis()
+                // A gap between our own ticks says nothing about the link: iOS suspends the app in
+                // the background and the main thread can be busy, while the heartbeats that arrived
+                // meanwhile are still queued in the socket. Skipping a single check gives the
+                // receive loop time to drain them, so waking up cannot blink NO LINK on a link that
+                // never went down. A real loss is still reported one tick later.
+                if (now - previousTick <= LOOP_STALL_TOLERANCE_MS) refreshConnection(now)
+                previousTick = now
+                // An early socket failure must not permanently disable discovery.
+                if (socketFd < 0) {
+                    socketFd = openSocket()
+                    if (socketFd < 0) {
+                        delay(1000.milliseconds)
+                        continue
+                    }
+                }
                 if (inited) {
                     sendManualControl()
                     if (now - lastHeartbeatSentTime >= 1000L) {
@@ -132,8 +195,7 @@ class MavlinkManagerIOS(
                     }
                 }
 
-                refreshConnection(now)
-                delay(20)
+                delay(20.milliseconds)
             }
         }
     }
@@ -141,29 +203,30 @@ class MavlinkManagerIOS(
     private fun startReceiveLoop() {
         recvJob = scope.launch {
             val packet = ByteArray(2048)
-            while (running) {
+            while (isActive && running) {
                 val received = receivePacket(packet)
                 if (received <= 0) {
-                    delay(20)
+                    delay(20.milliseconds)
                     continue
                 }
 
                 parseMavlinkFrames(packet, received).forEach { message ->
                     handleMessage(message)
                 }
+                yield()
             }
         }
     }
 
     private fun handleMessage(message: MavlinkMessage) {
-        if (autoDetect && !inited && message.msgId == MSG_HEARTBEAT) {
+        if (autoDetect && !inited && message.msgId == MSG_HEARTBEAT &&
+            message.componentId == droneComponentId && message.payload.size >= HEARTBEAT_PAYLOAD_LEN
+        ) {
             lastListenHost?.let { host ->
                 droneSystemId = message.systemId
                 targetHost = host
                 targetPort = lastListenPort
                 inited = true
-                isConnected = true
-                emitConnectionState()
                 persistDetectedConnection(targetHost, targetPort, droneSystemId)
             }
         }
@@ -247,7 +310,10 @@ class MavlinkManagerIOS(
         }
 
         val flags = fcntl(fd, F_GETFL, 0)
-        if (flags >= 0) fcntl(fd, F_SETFL, flags or O_NONBLOCK)
+        if (flags < 0 || fcntl(fd, F_SETFL, flags or O_NONBLOCK) < 0) {
+            close(fd)
+            return -1
+        }
         return fd
     }
 
@@ -619,6 +685,12 @@ private const val MANUAL_CONTROL_PAYLOAD_LEN = 11
 private const val COMMAND_LONG_PAYLOAD_LEN = 33
 private const val SERIAL_CONTROL_PAYLOAD_LEN = 79
 private const val SERIAL_CONTROL_DATA_LEN = 70
+
+/**
+ * A gap this long between two send-loop ticks means the process was stalled or suspended, so the
+ * ticks themselves cannot be used as evidence about the link.
+ */
+private const val LOOP_STALL_TOLERANCE_MS = 200L
 
 private const val MAV_CMD_COMPONENT_ARM_DISARM = 400
 private const val MAV_TYPE_GCS = 6

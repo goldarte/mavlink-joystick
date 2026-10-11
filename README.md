@@ -27,6 +27,17 @@ This is [Kotlin Multiplatform](https://www.jetbrains.com/help/kotlin-multiplatfo
 - To build and run the development version of the iOS app, open [iosApp.xcodeproj](./iosApp/iosApp.xcodeproj) in Xcode and run it from there
 - After that you will be able to run iOS app from Android Studio
 
+### Local tests
+
+Local tests are running during build phase and also can be run separately:
+
+```shell
+./gradlew :shared:localTests
+```
+
+The HTML report is saved to
+`shared/build/reports/tests/testAndroidHostTest/index.html`.
+
 ## Connect to drone
 
 App listens 14550 udp port by default and connects to first drone, which sends MAVLink heartbeat. You can change listen port in connection settings.

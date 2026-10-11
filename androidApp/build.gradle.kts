@@ -6,6 +6,11 @@ plugins {
     alias(libs.plugins.composeCompiler)
 }
 
+// Hook the application only: shared's pre-build is needed by the tests themselves.
+tasks.matching { it.name == "preBuild" }.configureEach {
+    dependsOn(":shared:localTests")
+}
+
 kotlin {
     target {
         compilerOptions {
@@ -46,4 +51,3 @@ android {
         targetCompatibility = JavaVersion.VERSION_11
     }
 }
-

@@ -11,5 +11,5 @@ val sharedModule = module {
     single { AppSettings(get()) }
     viewModel { FlightViewModel(get(), get()) }
     viewModel { SettingsViewModel(get(), get()) }
-    viewModel { MavlinkConsoleViewModel(get()) }
+    viewModel { MavlinkConsoleViewModel(get(), get()) }
 }

@@ -13,9 +13,15 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.East
+import androidx.compose.material.icons.filled.North
+import androidx.compose.material.icons.filled.South
+import androidx.compose.material.icons.filled.West
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -81,23 +87,16 @@ fun FlightScreen(
                     .fillMaxWidth()
                     .padding(bottom = 4.dp)
             ) {
-
-                Text(
-                    text = "YAW ←→",
+                JoystickAxisLabel(
+                    text = "YAW",
                     modifier = Modifier.weight(1f),
-                    textAlign = TextAlign.Center,
-                    color = Color.White.copy(alpha = 0.27f),
-                    fontSize = 10.sp,
-                    fontFamily = FontFamily.Monospace,
+                    axisDirection = AxisDirection.Horizontal,
                 )
 
-                Text(
-                    text = "↑ THR ↓",
+                JoystickAxisLabel(
+                    text = "THR",
                     modifier = Modifier.weight(1f),
-                    textAlign = TextAlign.Center,
-                    color = Color.White.copy(alpha = 0.27f),
-                    fontSize = 10.sp,
-                    fontFamily = FontFamily.Monospace,
+                    axisDirection = AxisDirection.Vertical,
                 )
             }
         }
@@ -295,25 +294,56 @@ fun FlightScreen(
                     .fillMaxWidth()
                     .padding(bottom = 4.dp)
             ) {
-
-                Text(
-                    text = "ROLL ←→",
+                JoystickAxisLabel(
+                    text = "ROLL",
                     modifier = Modifier.weight(1f),
-                    textAlign = TextAlign.Center,
-                    color = Color.White.copy(alpha = 0.27f),
-                    fontSize = 10.sp,
-                    fontFamily = FontFamily.Monospace,
+                    axisDirection = AxisDirection.Horizontal,
                 )
-
-                Text(
-                    text = "↑ PITCH ↓",
+                JoystickAxisLabel(
+                    text = "PITCH",
                     modifier = Modifier.weight(1f),
-                    textAlign = TextAlign.Center,
-                    color = Color.White.copy(alpha = 0.27f),
-                    fontSize = 10.sp,
-                    fontFamily = FontFamily.Monospace,
+                    axisDirection = AxisDirection.Vertical,
                 )
             }
         }
+    }
+}
+
+private enum class AxisDirection {
+    Vertical,
+    Horizontal
+}
+
+@Composable
+private fun JoystickAxisLabel(
+    text: String,
+    axisDirection: AxisDirection,
+    modifier: Modifier = Modifier,
+) {
+    val color = Color.White.copy(alpha = 0.27f)
+    Row(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterHorizontally),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            imageVector = if (axisDirection == AxisDirection.Vertical) Icons.Default.North else Icons.Default.West,
+            contentDescription = null,
+            modifier = Modifier.size(12.dp),
+            tint = color,
+        )
+        Text(
+            text = text,
+            color = color,
+            fontSize = 10.sp,
+            fontFamily = FontFamily.Monospace,
+            maxLines = 1,
+        )
+        Icon(
+            imageVector = if (axisDirection == AxisDirection.Vertical) Icons.Default.South else Icons.Default.East,
+            contentDescription = null,
+            modifier = Modifier.size(12.dp),
+            tint = color,
+        )
     }
 }

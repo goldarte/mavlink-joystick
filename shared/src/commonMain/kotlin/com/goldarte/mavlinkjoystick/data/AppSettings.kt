@@ -8,8 +8,11 @@ import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 
 private val INITIAL_SETTINGS_STATE = SettingsState(
@@ -55,6 +58,18 @@ private val INITIAL_SETTINGS_STATE = SettingsState(
 class AppSettings(private val dataStore: DataStore<Preferences>) {
     private val _state = MutableStateFlow(INITIAL_SETTINGS_STATE)
     val state: StateFlow<SettingsState> = _state.asStateFlow()
+
+    // Read directly from storage so restoring the console does not depend on
+    // the flight screen having started the general settings collector.
+    val consoleLandscape: Flow<Boolean> = dataStore.data
+        .map { it[AppSettingsKeys.CONSOLE_LANDSCAPE] ?: true }
+        .distinctUntilChanged()
+
+    suspend fun toggleConsoleOrientation() {
+        dataStore.edit {
+            it[AppSettingsKeys.CONSOLE_LANDSCAPE] = !(it[AppSettingsKeys.CONSOLE_LANDSCAPE] ?: true)
+        }
+    }
 
     // ─────────────────────────────────────────────
     // INIT
@@ -306,6 +321,8 @@ data class SettingsState(
 )
 
 object AppSettingsKeys {
+
+    val CONSOLE_LANDSCAPE = booleanPreferencesKey("console_landscape")
 
     // ─────────────────────────────────────────────
     // Connection
