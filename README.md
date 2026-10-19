@@ -1,6 +1,6 @@
 # Mavlink Joystick
 
-User-friendly iOS/Android joystick for controlling vehicles and robots via MAVLink protocol. Supports Flix/ArduPilot/PX4 drones out-of-the-box.
+User-friendly iOS/Android joystick for controlling vehicles and robots via MAVLink protocol. Supports Flix/ArduPilot/PX4 drones out-of-the-box. Supports any ROS2 robot via [mav_joy](https://github.com/goldarte/mavlink-joy-ros2) package.
 
 ![](app_screen.png)
 
@@ -19,6 +19,12 @@ See [building documentation](BUILD.md).
 ## Connect to drone
 
 App listens 14550 udp port by default and connects to first drone, which sends MAVLink heartbeat. You can change listen port in connection settings.
+
+## Connect to ROS2 robot
+
+Run mav_joy_node from [mav_joy](https://github.com/goldarte/mavlink-joy-ros2) package to output joystick values to /joy topic. Robot and Mavlink Joystick must be in same network.
+
+Then you can use [teleop_twist_joy](https://docs.ros.org/en/jazzy/p/teleop_twist_joy/) package to produce /cmd_vel command from /joy messages.
 
 ## Safety Notes
 
