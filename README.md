@@ -14,29 +14,7 @@ User-friendly iOS/Android joystick for controlling vehicles and robots via MAVLi
 
 ## Build
 
-This is [Kotlin Multiplatform](https://www.jetbrains.com/help/kotlin-multiplatform-dev/get-started.html) application, so you can build the app for iOS and Android.
-
-### Build and Run Android Application
-
-- Open this repo in Android Studio (Panda 4 is recommended)
-- To build and run the development version of the Android app, use the run configuration from Android Studio toolbar (androidApp)
-
-### Build and Run iOS Application
-
-- Get something with MacOS
-- To build and run the development version of the iOS app, open [iosApp.xcodeproj](./iosApp/iosApp.xcodeproj) in Xcode and run it from there
-- After that you will be able to run iOS app from Android Studio
-
-### Local tests
-
-Local tests are running during build phase and also can be run separately:
-
-```shell
-./gradlew :shared:localTests
-```
-
-The HTML report is saved to
-`shared/build/reports/tests/testAndroidHostTest/index.html`.
+See [building documentation](BUILD.md).
 
 ## Connect to drone
 
