@@ -48,6 +48,9 @@ class SettingsViewModel(
                 pitchParams = defaultCurveParams,
                 yawParams = defaultCurveParams,
                 throttleParams = defaultCurveParams
+            ),
+            throttleSettingsState = SettingsScreenState.ThrottleSettingsState(
+                isCentered = false
             )
         )
     )
@@ -97,6 +100,9 @@ class SettingsViewModel(
                                 offset = settingsState.throttleOffset,
                                 expo = settingsState.throttleExpo
                             )
+                        ),
+                        throttleSettingsState = SettingsScreenState.ThrottleSettingsState(
+                            isCentered = settingsState.isThrottleCentered
                         )
                     )
                 }
@@ -194,6 +200,12 @@ class SettingsViewModel(
     fun onKnobColorChange(color: Color) {
         viewModelScope.launch {
             appSettings.setKnobColor(color.toArgb())
+        }
+    }
+
+    fun onThrottleCenteredChange(isCentered: Boolean) {
+        viewModelScope.launch {
+            appSettings.setThrottleCentered(isCentered)
         }
     }
 

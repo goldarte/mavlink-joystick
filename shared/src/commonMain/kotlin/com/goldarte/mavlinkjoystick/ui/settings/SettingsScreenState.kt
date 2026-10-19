@@ -10,12 +10,14 @@ data class SettingsScreenState(
     val stickSizeState: StickSizeState,
     val stickAppearanceState: StickAppearanceState,
     val curveSettingsState: StickCurveSettingsState,
+    val throttleSettingsState: ThrottleSettingsState,
 ) {
     enum class SettingsTab {
         Connection,
         SticksSize,
         SticksAppearance,
         SticksCurve,
+        Throttle,
     }
 
     data class ConnectionSettingsState(
@@ -37,6 +39,14 @@ data class SettingsScreenState(
         val showSquareArea: Boolean,
         val showCircleBoundaries: Boolean,
         val knobColor: Color,
+    )
+
+    /**
+     * The two supported throttle stick behaviours. [isCentered] is the value stored in settings:
+     * false is the bottom-anchored 0..1000 mapping, true is the centered -1000..1000 one.
+     */
+    data class ThrottleSettingsState(
+        val isCentered: Boolean,
     )
 
     data class StickCurveSettingsState(

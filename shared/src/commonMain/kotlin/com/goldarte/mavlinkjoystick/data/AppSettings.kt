@@ -52,7 +52,10 @@ private val INITIAL_SETTINGS_STATE = SettingsState(
     // Throttle curve
     throttleWeight = 1.0f,
     throttleOffset = 0.0f,
-    throttleExpo = 0.0f
+    throttleExpo = 0.0f,
+
+    // Throttle axis. The bottom-anchored 0..1000 mapping is the historical behaviour.
+    isThrottleCentered = false
 )
 
 class AppSettings(private val dataStore: DataStore<Preferences>) {
@@ -116,7 +119,10 @@ class AppSettings(private val dataStore: DataStore<Preferences>) {
 
                     throttleWeight = prefs[AppSettingsKeys.THROTTLE_WEIGHT] ?: it.throttleWeight,
                     throttleOffset = prefs[AppSettingsKeys.THROTTLE_OFFSET] ?: it.throttleOffset,
-                    throttleExpo = prefs[AppSettingsKeys.THROTTLE_EXPO] ?: it.throttleExpo
+                    throttleExpo = prefs[AppSettingsKeys.THROTTLE_EXPO] ?: it.throttleExpo,
+
+                    isThrottleCentered = prefs[AppSettingsKeys.IS_THROTTLE_CENTERED]
+                        ?: it.isThrottleCentered
                 )
             }
         }
@@ -278,6 +284,19 @@ class AppSettings(private val dataStore: DataStore<Preferences>) {
         dataStore.edit { it[AppSettingsKeys.THROTTLE_EXPO] = value }
         _state.update { it.copy(throttleExpo = value) }
     }
+
+    // ─────────────────────────────────────────────
+    // THROTTLE AXIS
+    // ─────────────────────────────────────────────
+
+    /**
+     * `false`: the throttle stick is anchored at the bottom and maps 0..1000.
+     * `true`: the throttle stick is centered, maps -1000..1000 and springs back to the center.
+     */
+    suspend fun setThrottleCentered(value: Boolean) {
+        dataStore.edit { it[AppSettingsKeys.IS_THROTTLE_CENTERED] = value }
+        _state.update { it.copy(isThrottleCentered = value) }
+    }
 }
 
 data class SettingsState(
@@ -317,7 +336,10 @@ data class SettingsState(
     // Throttle curve
     val throttleWeight: Float,
     val throttleOffset: Float,
-    val throttleExpo: Float
+    val throttleExpo: Float,
+
+    // Throttle axis
+    val isThrottleCentered: Boolean
 )
 
 object AppSettingsKeys {
@@ -412,4 +434,15 @@ object AppSettingsKeys {
 
     val THROTTLE_EXPO =
         floatPreferencesKey("throttle_expo")
+
+    // ─────────────────────────────────────────────
+    // Throttle axis
+    // ─────────────────────────────────────────────
+
+    /**
+     * When true the throttle stick is centered, its value spans -1000..1000 and it returns to the
+     * center on release. Missing means the historical bottom-anchored 0..1000 mapping.
+     */
+    val IS_THROTTLE_CENTERED =
+        booleanPreferencesKey("is_throttle_centered")
 }

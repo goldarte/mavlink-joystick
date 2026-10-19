@@ -17,6 +17,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import com.goldarte.mavlinkjoystick.ui.flight.FlightScreenState
+import com.goldarte.mavlinkjoystick.ui.flight.JoystickAxis
 import kotlin.math.min
 import kotlin.math.sqrt
 
@@ -56,7 +57,7 @@ fun Joystick(
                             width = canvasWidth,
                             height = canvasHeight,
                             stickSizeFactor = coercedStickSizeFactor,
-                            isThrottleMode = currentState.isThrottleMode,
+                            state = currentState,
                             onChanged = currentOnChanged,
                         )
                     },
@@ -67,18 +68,23 @@ fun Joystick(
                             width = canvasWidth,
                             height = canvasHeight,
                             stickSizeFactor = coercedStickSizeFactor,
-                            isThrottleMode = currentState.isThrottleMode,
+                            state = currentState,
                             onChanged = currentOnChanged,
                         )
 
                         change.consume()
                     },
                     onDragEnd = {
-                        if (currentState.isThrottleMode) {
-                            currentOnChanged(0f, currentState.valueY)
-                        } else {
-                            currentOnChanged(0f, 0f)
-                        }
+                        // A bottom-anchored throttle holds its position, a centered throttle
+                        // (like every other axis) springs back to the center.
+                        currentOnChanged(
+                            0f,
+                            JoystickAxis.valueYAfterRelease(
+                                valueY = currentState.valueY,
+                                isThrottleMode = currentState.isThrottleMode,
+                                isThrottleCentered = currentState.isThrottleCentered,
+                            ),
+                        )
                     },
                 )
             },
@@ -94,11 +100,12 @@ fun Joystick(
 
         val knobX = cx + (state.valueX * radius)
 
-        val knobY = if (state.isThrottleMode) {
-            cy + radius - (state.valueY * radius * 2f)
-        } else {
-            cy + (state.valueY * radius)
-        }
+        val knobY = cy + JoystickAxis.knobOffsetY(
+            valueY = state.valueY,
+            isThrottleMode = state.isThrottleMode,
+            isThrottleCentered = state.isThrottleCentered,
+            radius = radius,
+        )
 
         val knobOffset = Offset(knobX, knobY)
 
@@ -233,33 +240,18 @@ private fun updateStateFromTouch(
     width: Float,
     height: Float,
     stickSizeFactor: Float,
-    isThrottleMode: Boolean,
+    state: FlightScreenState.JoystickState,
     onChanged: (Float, Float) -> Unit,
 ) {
-    val cx = width / 2f
-    val cy = height / 2f
-
-    val radius = (min(width, height) / 2f) *
-            0.88f *
-            stickSizeFactor
-
-    val clampedX = touchX.coerceIn(
-        cx - radius,
-        cx + radius,
+    val values = JoystickAxis.valuesFromTouch(
+        touchX = touchX,
+        touchY = touchY,
+        width = width,
+        height = height,
+        stickSizeFactor = stickSizeFactor,
+        isThrottleMode = state.isThrottleMode,
+        isThrottleCentered = state.isThrottleCentered,
     )
 
-    val clampedY = touchY.coerceIn(
-        cy - radius,
-        cy + radius,
-    )
-
-    val valueX = ((clampedX - cx) / radius).coerceIn(-1f, 1f)
-
-    val valueY = if (isThrottleMode) {
-        (1f - ((clampedY - (cy - radius)) / (2f * radius))).coerceIn(0f, 1f)
-    } else {
-        ((clampedY - cy) / radius).coerceIn(-1f, 1f)
-    }
-
-    onChanged(valueX, valueY)
+    onChanged(values.x, values.y)
 }

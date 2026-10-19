@@ -21,6 +21,8 @@ data class FlightScreenState(
         val valueX: Float,
         val valueY: Float,
         val isThrottleMode: Boolean,
+        /** Only meaningful with [isThrottleMode]: the stick is centered instead of bottom-anchored. */
+        val isThrottleCentered: Boolean,
         val showCircularArea: Boolean,
         val showSquareArea: Boolean,
         val showCircleBoundaries: Boolean,

@@ -138,6 +138,13 @@ fun SettingsScreen(
                             onWeightChangeFinished = vm::onWeightChangeFinished
                         )
                     }
+
+                    SettingsScreenState.SettingsTab.Throttle -> {
+                        ThrottleSettingsScreen(
+                            state = state.throttleSettingsState,
+                            onThrottleCenteredChange = vm::onThrottleCenteredChange,
+                        )
+                    }
                 }
             }
         }
@@ -233,6 +240,15 @@ private fun SettingsSidebar(
             paddingStart = 32.dp,
             onClick = {
                 onTabSelected(SettingsScreenState.SettingsTab.SticksCurve)
+            },
+        )
+
+        SidebarItem(
+            title = "↳ THROTTLE",
+            selected = selectedTab == SettingsScreenState.SettingsTab.Throttle,
+            paddingStart = 32.dp,
+            onClick = {
+                onTabSelected(SettingsScreenState.SettingsTab.Throttle)
             },
         )
 

@@ -26,6 +26,13 @@ interface MavlinkManager {
     var systemId: Int      // GCS system ID
     var componentId: Int    // GCS component ID
 
+    /**
+     * Selects how the throttle channel is encoded in MANUAL_CONTROL: false maps the stick's
+     * 0..1 range to 0..1000 (bottom-anchored throttle), true maps its -1..1 range to -1000..1000
+     * (centered throttle).
+     */
+    var isThrottleCentered: Boolean
+
     fun start()
     fun stop()
     fun sendArmCommand(arm: Boolean)
@@ -53,6 +60,7 @@ abstract class BaseMavlinkManager(
     override var droneSystemId: Int = 1
     override var droneComponentId: Int = 1
     override var autoDetect: Boolean = true
+    override var isThrottleCentered: Boolean = false
     override var systemId: Int = 255
     override var componentId: Int = 190
 
@@ -195,7 +203,16 @@ abstract class BaseMavlinkManager(
 
     protected fun axisToManual(value: Float): Int = (value.coerceIn(-1f, 1f) * 1000).toInt()
 
-    protected fun throttleToManual(value: Float): Int = (value.coerceIn(0f, 1f) * 1000).toInt()
+    /**
+     * A bottom-anchored throttle is unipolar and clamps at 0, a centered throttle is bipolar and
+     * reaches -1000 at the bottom of the stick.
+     */
+    protected fun throttleToManual(value: Float): Int =
+        if (isThrottleCentered) {
+            axisToManual(value)
+        } else {
+            (value.coerceIn(0f, 1f) * 1000).toInt()
+        }
 
     protected fun radiansToDegrees(value: Float): Float = (value * 180f / kotlin.math.PI.toFloat())
 

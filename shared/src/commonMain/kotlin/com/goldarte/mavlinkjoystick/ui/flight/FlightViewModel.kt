@@ -34,6 +34,7 @@ private val APP_START_STATE = FlightScreenState(
         valueX = 0f,
         valueY = 0f,
         isThrottleMode = true,
+        isThrottleCentered = false,
         showCircularArea = true,
         showSquareArea = true,
         showCircleBoundaries = true,
@@ -44,6 +45,7 @@ private val APP_START_STATE = FlightScreenState(
         valueX = 0f,
         valueY = 0f,
         isThrottleMode = false,
+        isThrottleCentered = false,
         showCircularArea = true,
         showSquareArea = true,
         showCircleBoundaries = true,
@@ -60,6 +62,7 @@ class FlightViewModel(
         valueX = 0f,
         valueY = 0f,
         isThrottleMode = true,
+        isThrottleCentered = false,
         showCircularArea = true,
         showSquareArea = true,
         showCircleBoundaries = true,
@@ -118,6 +121,7 @@ class FlightViewModel(
                     it.copy(
                         leftJoystickState = it.leftJoystickState.copy(
                             isThrottleMode = newSettings.isLeftJoystickInThrottleMode,
+                            isThrottleCentered = newSettings.isThrottleCentered,
                             showCircularArea = newSettings.showCircularArea,
                             showSquareArea = newSettings.showSquareArea,
                             showCircleBoundaries = newSettings.showCircleBoundaries,
@@ -126,6 +130,7 @@ class FlightViewModel(
                         ),
                         rightJoystickState = it.rightJoystickState.copy(
                             isThrottleMode = newSettings.isRightJoystickInThrottleMode,
+                            isThrottleCentered = newSettings.isThrottleCentered,
                             showCircularArea = newSettings.showCircularArea,
                             showSquareArea = newSettings.showSquareArea,
                             showCircleBoundaries = newSettings.showCircleBoundaries,
@@ -134,6 +139,9 @@ class FlightViewModel(
                         )
                     )
                 }
+                // The stick now produces -1..1 instead of 0..1, so the transport has to encode the
+                // throttle channel accordingly. This does not touch the network settings below.
+                mavlinkManager.isThrottleCentered = newSettings.isThrottleCentered
                 // Discovery updates the manager before saving settings. Persisting that
                 // address (or changing joystick appearance) must not tear down the link.
                 val connectionChanged = mavlinkManager.targetHost != newSettings.host ||
