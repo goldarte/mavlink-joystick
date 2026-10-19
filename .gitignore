@@ -1,5 +1,9 @@
 *.iml
 .gradle
+
+# Release signing material must never be committed.
+/keystore.properties
+androidApp/release.keystore
 /local.properties
 /.idea
 /.kotlin
