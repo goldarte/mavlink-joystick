@@ -1,3 +1,8 @@
+// Copyright (c) 2026 Arthur Golubtsov <goldartt@gmail.com>
+// Copyright (c) 2026 Eugene Molotkov
+// Repository: https://github.com/goldarte/mavlink-joystick
+// Assisted by Codex
+
 package com.goldarte.mavlinkjoystick.mavlink
 
 import com.goldarte.mavlinkjoystick.data.AppSettings

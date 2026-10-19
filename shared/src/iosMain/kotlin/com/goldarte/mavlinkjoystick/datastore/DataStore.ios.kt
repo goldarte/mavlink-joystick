@@ -1,3 +1,7 @@
+// Copyright (c) 2026 Arthur Golubtsov <goldartt@gmail.com>
+// Copyright (c) 2026 Eugene Molotkov
+// Repository: https://github.com/goldarte/mavlink-joystick
+
 package com.goldarte.mavlinkjoystick.datastore
 
 import androidx.datastore.core.DataStore
