@@ -24,7 +24,8 @@ Assisted by Gemini
             android:exported="true"
             android:name=".MainActivity"
             android:screenOrientation="landscape"
-            android:configChanges="orientation|screenSize|screenLayout">
+            android:configChanges="orientation|screenSize|screenLayout"
+            android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 

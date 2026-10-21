@@ -7,13 +7,14 @@ package com.goldarte.mavlinkjoystick.ui.console.compose
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
@@ -37,6 +38,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
@@ -56,28 +58,49 @@ fun MavlinkConsoleScreen(
     val state by vm.state.collectAsStateWithLifecycle()
     val focusManager = LocalFocusManager.current
 
-    Scaffold(
-        modifier = Modifier
-            .fillMaxSize()
-            .pointerInput(Unit) {
-                detectTapGestures(onTap = {
-                    focusManager.clearFocus()
-                })
-            },
-        containerColor = BackgroundColor,
-        topBar = { ConsoleToolbar(onBack = goBack) },
-    ) { innerPadding ->
-        Column(
+    BoxWithConstraints(
+        modifier = Modifier.fillMaxSize(),
+    ) {
+        // In landscape the on-screen keyboard takes most of the height, so the header is
+        // hidden while it is open and the console grows into the freed space.
+        val isLandscape = maxWidth > maxHeight
+        val isImeVisible = WindowInsets.ime.getBottom(LocalDensity.current) > 0
+        val showToolbar = !(isLandscape && isImeVisible)
+
+        Scaffold(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
-                .padding(16.dp),
-        ) {
+                // Shrink the whole screen above the on-screen keyboard instead of letting the
+                // platform pan the window: the toolbar stays put and the input row sits right
+                // above the keyboard.
+                .imePadding()
+                .pointerInput(Unit) {
+                    detectTapGestures(onTap = {
+                        focusManager.clearFocus()
+                    })
+                },
+            containerColor = BackgroundColor,
+            topBar = { if (showToolbar) ConsoleToolbar(onBack = goBack) },
+            bottomBar = {
+                ConsoleInputBar(
+                    input = state.input,
+                    onInputChange = vm::onInputChange,
+                    onSend = vm::sendConsoleMessage,
+                    onToggleOrientation = vm::toggleOrientation,
+                )
+            },
+        ) { innerPadding ->
             // LOG AREA
             Box(
                 modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth()
+                    .fillMaxSize()
+                    .padding(innerPadding)
+                    .padding(
+                        start = 16.dp,
+                        top = if (showToolbar) 16.dp else 0.dp,
+                        end = 16.dp,
+                        bottom = 8.dp,
+                    )
                     .background(SurfaceColor)
                     .padding(8.dp),
             ) {
@@ -96,43 +119,52 @@ fun MavlinkConsoleScreen(
                     modifier = Modifier.verticalScroll(scrollState),
                 )
             }
+        }
+    }
+}
 
-            Spacer(Modifier.height(8.dp))
+@Composable
+private fun ConsoleInputBar(
+    input: String,
+    onInputChange: (String) -> Unit,
+    onSend: () -> Unit,
+    onToggleOrientation: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+            .padding(bottom = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        ToggleOrientationButton(onClick = onToggleOrientation)
 
-            // INPUT ROW
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                ToggleOrientationButton(onClick = vm::toggleOrientation)
+        Spacer(Modifier.width(8.dp))
 
-                Spacer(Modifier.width(8.dp))
+        TextField(
+            value = input,
+            onValueChange = onInputChange,
+            modifier = Modifier.weight(1f),
+            placeholder = { Text("Type message...") },
+            singleLine = true,
+            colors = androidx.compose.material3.TextFieldDefaults.colors(
+                focusedContainerColor = Color(0xFF2A2A2A),
+                unfocusedContainerColor = Color(0xFF2A2A2A),
+                cursorColor = Color.White,
+                focusedTextColor = Color.White,
+                unfocusedTextColor = Color.White,
+            )
+        )
 
-                TextField(
-                    value = state.input,
-                    onValueChange = vm::onInputChange,
-                    modifier = Modifier.weight(1f),
-                    placeholder = { Text("Type message...") },
-                    singleLine = true,
-                    colors = androidx.compose.material3.TextFieldDefaults.colors(
-                        focusedContainerColor = Color(0xFF2A2A2A),
-                        unfocusedContainerColor = Color(0xFF2A2A2A),
-                        cursorColor = Color.White,
-                        focusedTextColor = Color.White,
-                        unfocusedTextColor = Color.White,
-                    )
-                )
+        Spacer(Modifier.width(8.dp))
 
-                Spacer(Modifier.width(8.dp))
-
-                Button(
-                    onClick = vm::sendConsoleMessage,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFFFF5C8D)
-                    )
-                ) {
-                    Text("SEND")
-                }
-            }
+        Button(
+            onClick = onSend,
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Color(0xFFFF5C8D)
+            )
+        ) {
+            Text("SEND")
         }
     }
 }
