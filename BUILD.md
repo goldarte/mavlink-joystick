@@ -13,7 +13,8 @@ This is [Kotlin Multiplatform](https://www.jetbrains.com/help/kotlin-multiplatfo
 ```
 
 The release APK is signed with the local key described below and is written to
-`androidApp/build/outputs/apk/release/androidApp-release.apk`.
+`androidApp/build/outputs/apk/release/mavlink-joystick-release.apk`, or to
+`mavlink-joystick-release-unsigned.apk` when no key is configured.
 
 ### Release signing
 
@@ -41,7 +42,7 @@ future updates over the existing app.
 ### Signing in GitHub Actions
 
 [Android CI](.github/workflows/android.yml) reads the same values from repository
-secrets, so CI builds produce the signed `androidApp-release.apk`:
+secrets, so CI builds produce the signed `mavlink-joystick-release.apk`:
 
 | Secret                    | Value                                         |
 | ------------------------- | --------------------------------------------- |
@@ -63,6 +64,9 @@ and never leaves the runner. If the secrets are absent — a pull request from a
 fork does not receive them — the release APK is still built, just unsigned, and
 the run logs a warning.
 
+Both APKs are uploaded as the `mavlink-joystick-apks` artifact:
+`mavlink-joystick-debug.apk` and the release APK, signed or `-unsigned`.
+
 ## Build and Run iOS Application
 
 - Get something with MacOS
@@ -73,8 +77,8 @@ the run logs a warning.
 
 [iOS CI](.github/workflows/ios.yml) builds both Apple targets and uploads:
 
-- `ios-simulator-app` — the Debug app built for the iOS Simulator (`iosSimulatorArm64`)
-- `ios-ipa` — an unsigned Release build for devices (`iosArm64`), packaged as an `.ipa`
+- `mavlink-joystick-simulator` — the Debug app built for the iOS Simulator (`iosSimulatorArm64`)
+- `mavlink-joystick-ipa` — an unsigned Release build for devices (`iosArm64`), packaged as `mavlink-joystick-unsigned.ipa`
 
 The `.ipa` is unsigned because CI has no Apple signing credentials. It is a zip
 with the app under `Payload/`, so it must be re-signed with a development

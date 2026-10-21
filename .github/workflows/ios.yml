@@ -113,13 +113,13 @@ jobs:
         run: |
           APP="$RUNNER_TEMP/DerivedData-simulator/Build/Products/$XCODE_CONFIGURATION-iphonesimulator/MavlinkJoystickIOS.app"
           test -d "$APP"
-          ditto -c -k --sequesterRsrc --keepParent "$APP" "$RUNNER_TEMP/MavlinkJoystickIOS-simulator.zip"
+          ditto -c -k --sequesterRsrc --keepParent "$APP" "$RUNNER_TEMP/mavlink-joystick-simulator.zip"
 
       - name: Upload the simulator app
         uses: actions/upload-artifact@v7
         with:
-          name: ios-simulator-app
-          path: ${{ runner.temp }}/MavlinkJoystickIOS-simulator.zip
+          name: mavlink-joystick-simulator
+          path: ${{ runner.temp }}/mavlink-joystick-simulator.zip
           if-no-files-found: error
 
       # An .ipa is a zip whose Payload/ folder contains the .app. Building against
@@ -150,12 +150,12 @@ jobs:
           cp -R "$APP" "$RUNNER_TEMP/ipa/Payload/"
           ditto -c -k --sequesterRsrc --keepParent \
             "$RUNNER_TEMP/ipa/Payload" \
-            "$RUNNER_TEMP/MavlinkJoystickIOS-unsigned.ipa"
+            "$RUNNER_TEMP/mavlink-joystick-unsigned.ipa"
           echo "::notice::The IPA is unsigned: re-sign it with a development certificate before installing it on a device."
 
       - name: Upload the IPA
         uses: actions/upload-artifact@v7
         with:
-          name: ios-ipa
-          path: ${{ runner.temp }}/MavlinkJoystickIOS-unsigned.ipa
+          name: mavlink-joystick-ipa
+          path: ${{ runner.temp }}/mavlink-joystick-unsigned.ipa
           if-no-files-found: error

@@ -95,3 +95,18 @@ android {
         targetCompatibility = JavaVersion.VERSION_11
     }
 }
+
+// Name the APKs after the app rather than after the Gradle module, so release
+// downloads read mavlink-joystick-release.apk instead of androidApp-release.apk.
+// Setting outputFileName replaces AGP's default name outright, including the
+// "-unsigned" suffix it normally appends when no signing config is available,
+// so that suffix is reproduced here to keep signed and unsigned builds apart.
+androidComponents {
+    onVariants { variant ->
+        val unsigned = variant.buildType == "release" && !hasReleaseSigning
+        val suffix = if (unsigned) "-unsigned" else ""
+        variant.outputs.forEach { output ->
+            output.outputFileName.set("mavlink-joystick-${variant.buildType}$suffix.apk")
+        }
+    }
+}

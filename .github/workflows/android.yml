@@ -98,8 +98,8 @@ jobs:
       #
       # :androidApp:preBuild depends on :shared:localTests, so the shared
       # multiplatform unit tests run - and must pass - as part of this build.
-      # A signed release APK is written to androidApp-release.apk, an unsigned
-      # one to androidApp-release-unsigned.apk.
+      # A signed release APK is written to mavlink-joystick-release.apk, an
+      # unsigned one to mavlink-joystick-release-unsigned.apk.
       - name: Build debug and release APKs
         env:
           RELEASE_STORE_FILE: ${{ steps.signing.outputs.store-file }}
@@ -110,7 +110,7 @@ jobs:
 
       - name: Report release signing
         run: |
-          if [ -f androidApp/build/outputs/apk/release/androidApp-release.apk ]; then
+          if [ -f androidApp/build/outputs/apk/release/mavlink-joystick-release.apk ]; then
             echo "Release APK is signed."
           else
             echo "::warning::The release APK is unsigned: signing secrets were not available."
@@ -120,7 +120,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: android-apks
+          name: mavlink-joystick-apks
           path: androidApp/build/outputs/apk/**/*.apk
           if-no-files-found: warn
 
