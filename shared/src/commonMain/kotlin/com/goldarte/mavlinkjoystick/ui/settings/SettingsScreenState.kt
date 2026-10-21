@@ -31,6 +31,8 @@ data class SettingsScreenState(
         val listenPort: String,
         val droneSystemId: String,
         val droneComponentId: String,
+        /** Why the last save attempt was rejected, or `null` when there is nothing to report. */
+        val validationError: String? = null,
     )
 
     data class StickSizeState(

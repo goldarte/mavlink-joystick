@@ -119,47 +119,87 @@ class SettingsViewModel(
     }
 
     fun onAutodetectCheckboxClicked() {
-        _state.update { it.copy(connectionSettingsState = it.connectionSettingsState.copy(autoDetect = !_state.value.connectionSettingsState.autoDetect)) }
+        updateConnectionSettings { it.copy(autoDetect = !it.autoDetect) }
     }
 
     fun onListenPortChanged(value: String) {
-        _state.update { it.copy(connectionSettingsState = it.connectionSettingsState.copy(listenPort = value)) }
+        updateConnectionSettings { it.copy(listenPort = sanitizePortInput(value)) }
     }
 
     fun onHostChanged(value: String) {
-        _state.update { state -> state.copy(connectionSettingsState = state.connectionSettingsState.copy(host = value.filter { it.isDigit() })) }
+        updateConnectionSettings { it.copy(host = sanitizeIpv4Input(value)) }
     }
 
     fun onTargetPortChanged(value: String) {
-        _state.update { state -> state.copy(connectionSettingsState = state.connectionSettingsState.copy(port = value.filter { it.isDigit() })) }
+        updateConnectionSettings { it.copy(port = sanitizePortInput(value)) }
     }
 
     fun onDroneSystemIdChanged(value: String) {
-        _state.update { state ->
-            state.copy(
-                connectionSettingsState = state.connectionSettingsState.copy(droneSystemId = value.filter { it.isDigit() })
-            )
-        }
+        updateConnectionSettings { it.copy(droneSystemId = sanitizeMavlinkIdInput(value)) }
     }
 
     fun onDroneComponentIdChanged(value: String) {
-        _state.update { state ->
-            state.copy(
-                connectionSettingsState = state.connectionSettingsState.copy(droneComponentId = value.filter { it.isDigit() })
-            )
-        }
+        updateConnectionSettings { it.copy(droneComponentId = sanitizeMavlinkIdInput(value)) }
     }
 
     fun onSaveConnectionSettingsClicked() {
-        viewModelScope.launch {
-            with(_state.value.connectionSettingsState) {
-                appSettings.setAutoDetect(autoDetect)
-                appSettings.setHost(host)
-                appSettings.setPort(port.toInt())
-                appSettings.setListenPort(listenPort.toInt())
-                appSettings.setDroneSystemId(droneSystemId.toInt())
-                appSettings.setDroneComponentId(droneComponentId.toInt())
+        val connection = _state.value.connectionSettingsState
+        val host = parseIpv4(connection.host)
+        val port = parsePort(connection.port)
+        val listenPort = parsePort(connection.listenPort)
+        val systemId = parseMavlinkId(connection.droneSystemId)
+        val componentId = parseMavlinkId(connection.droneComponentId)
+
+        val error = when {
+            listenPort == null -> "Listen Port must be between 1 and 65535"
+            componentId == null -> "Target Component ID must be between 1 and 255"
+            // While auto-detection is on these fields are disabled, so the user cannot correct them
+            // here. Keep whatever is already stored; the detector overwrites it on the heartbeat.
+            !connection.autoDetect && host == null ->
+                "Target IP must be a dotted IPv4 address, e.g. 192.168.4.1"
+            !connection.autoDetect && port == null -> "Target Port must be between 1 and 65535"
+            !connection.autoDetect && systemId == null -> "Target System ID must be between 1 and 255"
+            else -> null
+        }
+        if (error != null) {
+            _state.update { state ->
+                state.copy(
+                    connectionSettingsState = state.connectionSettingsState.copy(validationError = error)
+                )
             }
+            return
+        }
+
+        // Not null: the branch above only lets auto-detection own the target fields.
+        val savedListenPort = listenPort ?: return
+        val savedComponentId = componentId ?: return
+        val stored = appSettings.state.value
+
+        _state.update { state ->
+            state.copy(
+                connectionSettingsState = state.connectionSettingsState.copy(validationError = null)
+            )
+        }
+
+        viewModelScope.launch {
+            appSettings.setAutoDetect(connection.autoDetect)
+            appSettings.setHost(host ?: stored.host)
+            appSettings.setPort(port ?: stored.port)
+            appSettings.setListenPort(savedListenPort)
+            appSettings.setDroneSystemId(systemId ?: stored.droneSystemId)
+            appSettings.setDroneComponentId(savedComponentId)
+        }
+    }
+
+    /** Applies an edit to the connection form and drops a validation message left by a failed save. */
+    private fun updateConnectionSettings(
+        transform: (SettingsScreenState.ConnectionSettingsState) -> SettingsScreenState.ConnectionSettingsState,
+    ) {
+        _state.update { state ->
+            state.copy(
+                connectionSettingsState = transform(state.connectionSettingsState)
+                    .copy(validationError = null)
+            )
         }
     }
 

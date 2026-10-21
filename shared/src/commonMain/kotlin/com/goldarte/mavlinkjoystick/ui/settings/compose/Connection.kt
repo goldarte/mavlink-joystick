@@ -119,6 +119,16 @@ fun ConnectionSettingsScreen(
 
         Spacer(modifier = Modifier.height(24.dp))
 
+        state.validationError?.let { error ->
+            Text(
+                text = error,
+                color = Color(0xFFFF5C8D),
+                fontSize = 12.sp,
+                fontFamily = FontFamily.Monospace,
+                modifier = Modifier.padding(bottom = 12.dp),
+            )
+        }
+
         Button(
             onClick = onSaveClick,
             modifier = Modifier.fillMaxWidth(),
