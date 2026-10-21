@@ -25,8 +25,12 @@ val keystoreProperties = Properties().apply {
     }
 }
 
+// A variable that is set but blank counts as "not configured": CI systems expose
+// missing secrets as empty strings, and an empty storeFile would reach
+// rootProject.file("") below and fail the build instead of producing an
+// unsigned APK.
 fun signingValue(property: String, environment: String): String? =
-    keystoreProperties.getProperty(property) ?: System.getenv(environment)
+    (keystoreProperties.getProperty(property) ?: System.getenv(environment))?.takeIf { it.isNotBlank() }
 
 val releaseStoreFile = signingValue("storeFile", "RELEASE_STORE_FILE")
 val releaseStorePassword = signingValue("storePassword", "RELEASE_STORE_PASSWORD")
@@ -89,5 +93,20 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
+    }
+}
+
+// Name the APKs after the app rather than after the Gradle module, so release
+// downloads read mavlink-joystick-release.apk instead of androidApp-release.apk.
+// Setting outputFileName replaces AGP's default name outright, including the
+// "-unsigned" suffix it normally appends when no signing config is available,
+// so that suffix is reproduced here to keep signed and unsigned builds apart.
+androidComponents {
+    onVariants { variant ->
+        val unsigned = variant.buildType == "release" && !hasReleaseSigning
+        val suffix = if (unsigned) "-unsigned" else ""
+        variant.outputs.forEach { output ->
+            output.outputFileName.set("mavlink-joystick-${variant.buildType}$suffix.apk")
+        }
     }
 }
