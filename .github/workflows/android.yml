@@ -1,0 +1,135 @@
+name: Android CI
+
+on:
+  push:
+    # '**' matches every branch and every tag. Both filters must be declared:
+    # defining only one of them stops the workflow from running for the other
+    # kind of ref. Path filters are never evaluated for pushes of tags, so a tag
+    # always builds regardless of what the commit changed.
+    branches: ['**']
+    tags: ['**']
+    paths-ignore:
+      - '**/*.md'
+      - 'iosApp/**'
+      - '.github/workflows/ios.yml'
+  pull_request:
+    paths-ignore:
+      - '**/*.md'
+      - 'iosApp/**'
+      - '.github/workflows/ios.yml'
+  # Manual run from the Actions tab or the API. Leave "ref" empty to build the
+  # branch or tag selected in the UI, or type any commit SHA to build exactly
+  # that commit.
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Branch, tag or commit SHA to build (empty = the ref selected in the UI)'
+        required: false
+        type: string
+
+# A newer push to the same branch or pull request cancels the builds still running.
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Assemble APKs
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+        with:
+          # A manual run can name any commit; every other event builds the ref
+          # that triggered the workflow.
+          ref: ${{ inputs.ref || github.ref }}
+
+      - name: Show the commit being built
+        run: git log -1 --format='%H %s'
+
+      # gradle/gradle-daemon-jvm.properties pins the Gradle daemon JVM to 21.
+      - name: Set up JDK 21
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      # Caches the Gradle User Home between runs.
+      # "basic" is the MIT-licensed cache implementation; the action's default
+      # ("enhanced") is faster but ships a proprietary component under
+      # https://gradle.com/legal/terms-of-use/ and is free for public repos.
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-provider: basic
+
+      # Release signing material comes from repository secrets. BUILD.md
+      # documents the matching RELEASE_* variables that the Gradle build reads
+      # (androidApp/build.gradle.kts):
+      #   RELEASE_KEYSTORE_BASE64 -> the keystore file, base64-encoded (a secret,
+      #                              because the keystore itself is gitignored)
+      #   RELEASE_STORE_PASSWORD  -> storePassword
+      #   RELEASE_KEY_ALIAS       -> keyAlias
+      #   RELEASE_KEY_PASSWORD    -> keyPassword
+      # When the secrets are absent - pull requests from forks never receive
+      # them - the release APK is built unsigned instead of failing.
+      - name: Prepare release signing
+        id: signing
+        env:
+          KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
+        run: |
+          if [ -z "$KEYSTORE_BASE64" ]; then
+            echo "RELEASE_KEYSTORE_BASE64 is not set: the release APK will be unsigned."
+            echo "store-file=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          KEYSTORE="$RUNNER_TEMP/release.keystore"
+          printf '%s' "$KEYSTORE_BASE64" | tr -d '\r' | base64 --decode > "$KEYSTORE"
+          echo "store-file=$KEYSTORE" >> "$GITHUB_OUTPUT"
+          echo "Decoded the release keystore into the runner's temporary directory."
+
+      # The Android SDK (platform 37, build-tools 37.0.0) ships with the runner
+      # image, and AGP accepts the SDK licences already present there.
+      #
+      # :androidApp:preBuild depends on :shared:localTests, so the shared
+      # multiplatform unit tests run - and must pass - as part of this build.
+      # A signed release APK is written to androidApp-release.apk, an unsigned
+      # one to androidApp-release-unsigned.apk.
+      - name: Build debug and release APKs
+        env:
+          RELEASE_STORE_FILE: ${{ steps.signing.outputs.store-file }}
+          RELEASE_STORE_PASSWORD: ${{ secrets.RELEASE_STORE_PASSWORD }}
+          RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
+          RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
+        run: ./gradlew :androidApp:assembleDebug :androidApp:assembleRelease --stacktrace
+
+      - name: Report release signing
+        run: |
+          if [ -f androidApp/build/outputs/apk/release/androidApp-release.apk ]; then
+            echo "Release APK is signed."
+          else
+            echo "::warning::The release APK is unsigned: signing secrets were not available."
+          fi
+
+      - name: Upload APKs
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: android-apks
+          path: androidApp/build/outputs/apk/**/*.apk
+          if-no-files-found: warn
+
+      - name: Upload test report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: shared-test-report
+          path: |
+            shared/build/reports/tests/
+            shared/build/test-results/
+          if-no-files-found: ignore

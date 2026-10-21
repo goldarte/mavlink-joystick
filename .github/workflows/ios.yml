@@ -1,0 +1,161 @@
+name: iOS CI
+
+on:
+  push:
+    # '**' matches every branch and every tag. Both filters must be declared:
+    # defining only one of them stops the workflow from running for the other
+    # kind of ref. Path filters are never evaluated for pushes of tags, so a tag
+    # always builds regardless of what the commit changed.
+    branches: ['**']
+    tags: ['**']
+    paths-ignore:
+      - '**/*.md'
+      - 'androidApp/**'
+      - '.github/workflows/android.yml'
+  pull_request:
+    paths-ignore:
+      - '**/*.md'
+      - 'androidApp/**'
+      - '.github/workflows/android.yml'
+  # Manual run from the Actions tab or the API. Leave "ref" empty to build the
+  # branch or tag selected in the UI, or type any commit SHA to build exactly
+  # that commit.
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Branch, tag or commit SHA to build (empty = the ref selected in the UI)'
+        required: false
+        type: string
+
+# A newer push to the same branch or pull request cancels the builds still running.
+concurrency:
+  group: ios-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build iOS app and IPA
+    # macos-latest is Apple silicon, which matches the iosSimulatorArm64 target
+    # that shared/build.gradle.kts declares. The image's default Xcode is used;
+    # pin it with "sudo xcode-select -s /Applications/Xcode_<version>.app" if you
+    # ever need a reproducible toolchain.
+    runs-on: macos-latest
+    # Two full builds (simulator Debug, device Release) plus the first-run
+    # Kotlin/Native toolchain download.
+    timeout-minutes: 75
+
+    env:
+      XCODE_CONFIGURATION: Debug
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+        with:
+          # A manual run can name any commit; every other event builds the ref
+          # that triggered the workflow.
+          ref: ${{ inputs.ref || github.ref }}
+
+      - name: Show the commit being built
+        run: git log -1 --format='%H %s'
+
+      # gradle/gradle-daemon-jvm.properties pins the Gradle daemon JVM to 21.
+      # Xcode's build phase inherits JAVA_HOME, so Gradle works inside Xcode too.
+      - name: Set up JDK 21
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      # Caches the Gradle User Home between runs.
+      # "basic" is the MIT-licensed cache implementation; the action's default
+      # ("enhanced") is faster but ships a proprietary component under
+      # https://gradle.com/legal/terms-of-use/ and is free for public repos.
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-provider: basic
+
+      # The Kotlin/Native toolchain (~800 MB) is not part of the Gradle User Home
+      # cache, and re-downloading it dominates the first build of every run.
+      - name: Cache Kotlin/Native toolchain
+        uses: actions/cache@v6
+        with:
+          path: ~/.konan
+          key: konan-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('gradle/libs.versions.toml') }}
+          restore-keys: |
+            konan-${{ runner.os }}-${{ runner.arch }}-
+
+      - name: Show Xcode version
+        run: xcodebuild -version
+
+      # The "Compile Kotlin Framework" build phase of the Xcode project runs
+      # ./gradlew :shared:embedAndSignAppleFrameworkForXcode, which builds the
+      # Kotlin framework for the requested SDK and links it into the app.
+      # The framework is static, so nothing has to be embedded or signed, and
+      # CODE_SIGNING_ALLOWED=NO lets every build run without certificates.
+      - name: Build iOS app for the simulator
+        working-directory: iosApp
+        run: |
+          xcodebuild \
+            -project iosApp.xcodeproj \
+            -scheme iosApp \
+            -configuration "$XCODE_CONFIGURATION" \
+            -sdk iphonesimulator \
+            -arch arm64 \
+            -derivedDataPath "$RUNNER_TEMP/DerivedData-simulator" \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+
+      - name: Package the simulator app
+        run: |
+          APP="$RUNNER_TEMP/DerivedData-simulator/Build/Products/$XCODE_CONFIGURATION-iphonesimulator/MavlinkJoystickIOS.app"
+          test -d "$APP"
+          ditto -c -k --sequesterRsrc --keepParent "$APP" "$RUNNER_TEMP/MavlinkJoystickIOS-simulator.zip"
+
+      - name: Upload the simulator app
+        uses: actions/upload-artifact@v7
+        with:
+          name: ios-simulator-app
+          path: ${{ runner.temp }}/MavlinkJoystickIOS-simulator.zip
+          if-no-files-found: error
+
+      # An .ipa is a zip whose Payload/ folder contains the .app. Building against
+      # iphoneos compiles the iosArm64 target - the simulator build above only
+      # covers iosSimulatorArm64 - so this also keeps the device target green.
+      # Release configuration is used so release-mode Kotlin/Native linking is
+      # covered too. No Apple credentials are available on CI, so the app is built
+      # unsigned and the .ipa must be re-signed before it can be installed.
+      - name: Build the unsigned device app
+        working-directory: iosApp
+        run: |
+          xcodebuild \
+            -project iosApp.xcodeproj \
+            -scheme iosApp \
+            -configuration Release \
+            -sdk iphoneos \
+            -arch arm64 \
+            -derivedDataPath "$RUNNER_TEMP/DerivedData-device" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            build
+
+      - name: Package the unsigned IPA
+        run: |
+          APP="$RUNNER_TEMP/DerivedData-device/Build/Products/Release-iphoneos/MavlinkJoystickIOS.app"
+          test -d "$APP"
+          mkdir -p "$RUNNER_TEMP/ipa/Payload"
+          cp -R "$APP" "$RUNNER_TEMP/ipa/Payload/"
+          ditto -c -k --sequesterRsrc --keepParent \
+            "$RUNNER_TEMP/ipa/Payload" \
+            "$RUNNER_TEMP/MavlinkJoystickIOS-unsigned.ipa"
+          echo "::notice::The IPA is unsigned: re-sign it with a development certificate before installing it on a device."
+
+      - name: Upload the IPA
+        uses: actions/upload-artifact@v7
+        with:
+          name: ios-ipa
+          path: ${{ runner.temp }}/MavlinkJoystickIOS-unsigned.ipa
+          if-no-files-found: error

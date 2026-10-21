@@ -25,8 +25,12 @@ val keystoreProperties = Properties().apply {
     }
 }
 
+// A variable that is set but blank counts as "not configured": CI systems expose
+// missing secrets as empty strings, and an empty storeFile would reach
+// rootProject.file("") below and fail the build instead of producing an
+// unsigned APK.
 fun signingValue(property: String, environment: String): String? =
-    keystoreProperties.getProperty(property) ?: System.getenv(environment)
+    (keystoreProperties.getProperty(property) ?: System.getenv(environment))?.takeIf { it.isNotBlank() }
 
 val releaseStoreFile = signingValue("storeFile", "RELEASE_STORE_FILE")
 val releaseStorePassword = signingValue("storePassword", "RELEASE_STORE_PASSWORD")
