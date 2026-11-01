@@ -32,6 +32,10 @@ on:
         description: 'Branch, tag or commit SHA to build (empty = the ref selected in the UI)'
         required: false
         type: string
+      attach_tag:
+        description: 'Attach the artifacts of an already built tag to its release instead of building (e.g. v2.0-rc2)'
+        required: false
+        type: string
 
 # A newer push to the same branch or pull request cancels the builds still running.
 # The event name is part of the group so that publishing a release does not
@@ -46,8 +50,9 @@ permissions:
 jobs:
   build:
     name: Build the unsigned IPA
-    # A release event has nothing to build: see "attach" below.
-    if: github.event_name != 'release'
+    # A release event has nothing to build: see "attach" below. A manual run that
+    # only asks to attach artifacts does not build either.
+    if: github.event_name != 'release' && !inputs.attach_tag
     # macos-latest is Apple silicon and has the iOS SDKs installed. The image's
     # default Xcode is used; pin it with
     # "sudo xcode-select -s /Applications/Xcode_<version>.app" if you ever need a
@@ -148,7 +153,10 @@ jobs:
     name: Attach the IPA to the release
     # Publishing a release does not rebuild anything: the tag was already built
     # by the push run, and this job moves that run's artifact onto the release.
-    if: github.event_name == 'release'
+    # A manual run with "attach_tag" set reaches the same job, which is the way
+    # to attach assets to a release that was published from a tag whose own
+    # workflow was broken or out of date.
+    if: github.event_name == 'release' || inputs.attach_tag
     # No Xcode involved - the IPA is just a file being copied between GitHub's
     # storage and a release, so a Linux runner is enough.
     runs-on: ubuntu-latest
@@ -159,19 +167,27 @@ jobs:
       # this job needs is listed: release assets and the other run's artifacts.
       contents: write
       actions: read
+    # There is no checkout in this job, so gh cannot infer the repository from a
+    # git remote and would fail with "not a git repository". GH_REPO tells it
+    # which repository to talk to.
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      TAG: ${{ github.event.release.tag_name || inputs.attach_tag }}
     steps:
       - name: Find the run that built the release commit
         id: run
-        env:
-          GH_TOKEN: ${{ github.token }}
         run: |
-          # GITHUB_SHA of a release event is the commit the tag points to, so the
-          # push run that built it is the one to take the artifact from. A branch
-          # push of the same commit produces an identical IPA, so it is accepted
-          # too - what matters is the commit, not which ref announced it.
+          # Resolve the tag to its commit through the API rather than trusting
+          # GITHUB_SHA: on a release event GITHUB_SHA is the tagged commit, but a
+          # manual run checks out whatever ref was selected in the UI.
+          SHA=$(gh api "repos/$GH_REPO/commits/$TAG" --jq .sha)
+          # The push run that built that commit is the one to take the artifact
+          # from. A branch push of the same commit produces an identical IPA, so
+          # it is accepted too - what matters is the commit, not the ref.
           # Publishing a release right after pushing a tag is common, so wait for
           # the build instead of failing: 60 attempts, 30 seconds apart.
-          RUNS_URL="repos/$GITHUB_REPOSITORY/actions/workflows/ios.yml/runs?event=push&head_sha=$GITHUB_SHA&per_page=20"
+          RUNS_URL="repos/$GH_REPO/actions/workflows/ios.yml/runs?event=push&head_sha=$SHA&per_page=20"
           RUN_ID=""
           for attempt in $(seq 1 60); do
             RUNS=$(gh api "$RUNS_URL")
@@ -182,18 +198,18 @@ jobs:
             # Nothing successful yet. If every run for this commit has finished
             # without success, waiting longer cannot help.
             if printf '%s' "$RUNS" | jq -e '(.workflow_runs | length) > 0 and all(.workflow_runs[]; .status == "completed")' > /dev/null; then
-              echo "::error::No successful build of $GITHUB_SHA. Check the tag build in the Actions tab, then re-run this job."
+              echo "::error::No successful build of $SHA. Check the tag build in the Actions tab, then re-run this job."
               exit 1
             fi
-            echo "Waiting for the build of $GITHUB_SHA to finish (attempt $attempt/60)..."
+            echo "Waiting for the build of $SHA to finish (attempt $attempt/60)..."
             sleep 30
           done
           if [ -z "$RUN_ID" ]; then
-            echo "::error::Timed out waiting for a successful build of $GITHUB_SHA."
+            echo "::error::Timed out waiting for a successful build of $SHA."
             exit 1
           fi
           # The artifact of an unarchived upload is named after its file.
-          ARTIFACT=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$RUN_ID/artifacts" \
+          ARTIFACT=$(gh api "repos/$GH_REPO/actions/runs/$RUN_ID/artifacts" \
             --jq '[.artifacts[].name | select(startswith("mavlink-joystick") and endswith(".ipa"))][0] // ""')
           if [ -z "$ARTIFACT" ]; then
             echo "::error::Run $RUN_ID has no mavlink-joystick IPA artifact (it may have expired)."
@@ -216,12 +232,11 @@ jobs:
       # Release assets are plain files, so the IPA is attached as-is, without a
       # zip. An asset with the same name from an earlier attempt is replaced.
       - name: Attach the IPA to the release
-        env:
-          GH_TOKEN: ${{ github.token }}
-          TAG: ${{ github.event.release.tag_name }}
         run: |
           IPA=$(find "$RUNNER_TEMP/release" -type f -name '*.ipa' -print -quit)
           test -n "$IPA"
-          gh release view "$TAG" > /dev/null
-          gh release upload "$TAG" "$IPA" --clobber
+          # GH_REPO already tells gh which repository to use; -R repeats it on
+          # the command itself, so no git remote is ever consulted.
+          gh release view "$TAG" -R "$GH_REPO" > /dev/null
+          gh release upload "$TAG" "$IPA" --clobber -R "$GH_REPO"
           echo "::notice::Attached $(basename "$IPA") to the release $TAG."
