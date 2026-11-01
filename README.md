@@ -12,6 +12,11 @@ User-friendly iOS/Android joystick for controlling vehicles and robots via MAVLi
 - **Status bar** - armed/voltage/mode display
 - **Mavlink console** - for low-level autopilot setup
 
+## Install
+
+Prebuilt Android and iOS apps are published as release artifacts - see the
+[installation guide](INSTALL.md).
+
 ## Build
 
 See [building documentation](BUILD.md).
