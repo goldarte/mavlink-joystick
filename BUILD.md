@@ -13,8 +13,8 @@ This is [Kotlin Multiplatform](https://www.jetbrains.com/help/kotlin-multiplatfo
 ```
 
 The release APK is signed with the local key described below and is written to
-`androidApp/build/outputs/apk/release/mavlink-joystick-release.apk`, or to
-`mavlink-joystick-release-unsigned.apk` when no key is configured.
+`androidApp/build/outputs/apk/release/mavlink-joystick.apk`, or to
+`mavlink-joystick-unsigned.apk` when no key is configured.
 
 ### Release signing
 
@@ -42,7 +42,7 @@ future updates over the existing app.
 ### Signing in GitHub Actions
 
 [Android CI](.github/workflows/android.yml) reads the same values from repository
-secrets, so CI builds produce the signed `mavlink-joystick-release.apk`:
+secrets, so CI builds produce the signed `mavlink-joystick.apk`:
 
 | Secret                    | Value                                         |
 | ------------------------- | --------------------------------------------- |
@@ -64,8 +64,10 @@ and never leaves the runner. If the secrets are absent — a pull request from a
 fork does not receive them — the release APK is still built, just unsigned, and
 the run logs a warning.
 
-Both APKs are uploaded as the `mavlink-joystick-apks` artifact:
-`mavlink-joystick-debug.apk` and the release APK, signed or `-unsigned`.
+### Android artifacts in GitHub Actions
+
+CI builds and publishes the release APK only - `mavlink-joystick.apk`, or `mavlink-joystick-unsigned.apk` when the
+signing secrets are missing.
 
 ## Build and Run iOS Application
 
@@ -75,14 +77,36 @@ Both APKs are uploaded as the `mavlink-joystick-apks` artifact:
 
 ### iOS artifacts in GitHub Actions
 
-[iOS CI](.github/workflows/ios.yml) builds both Apple targets and uploads:
-
-- `mavlink-joystick-simulator` — the Debug app built for the iOS Simulator (`iosSimulatorArm64`)
-- `mavlink-joystick-ipa` — an unsigned Release build for devices (`iosArm64`), packaged as `mavlink-joystick-unsigned.ipa`
+[iOS CI](.github/workflows/ios.yml) builds the device target (`iosArm64`) in the
+Release configuration and uploads a single artifact, `mavlink-joystick-unsigned.ipa`.
 
 The `.ipa` is unsigned because CI has no Apple signing credentials. It is a zip
 with the app under `Payload/`, so it must be re-signed with a development
 certificate — for example by a sideloading tool — before iOS will install it.
+
+## Releases
+
+Publishing a release (`release: published`) does not rebuild anything. A second
+job in each workflow finds the run that already built that commit, downloads its
+artifact, and attaches it to the release:
+
+1. Push a tag and let the normal `push` run build it.
+2. Publish the release yourself — from the GitHub UI or with
+   `gh release create v1.2.3 --notes-file notes.md`, adding `--prerelease` if you
+   want a pre-release. Pre-releases are real releases too, so the flow is the
+   same.
+3. The release job takes `mavlink-joystick.apk` and `mavlink-joystick-unsigned.ipa`
+   from that run and attaches them as plain assets — no zips — replacing
+   same-named assets from an earlier attempt.
+
+The job looks for a successful `push` run of the release commit and waits up to
+30 minutes for one to finish, so publishing a release immediately after pushing
+the tag works too. If the tag build failed, the job stops with an error instead
+of waiting; re-running the job after a successful build is enough.
+
+The workflows never create, edit, or publish releases; publishing stays manual.
+Assets are attached with `gh release upload --clobber`, which is why the release
+jobs declare `contents: write`, while the build jobs keep `contents: read`.
 
 ## Local tests
 

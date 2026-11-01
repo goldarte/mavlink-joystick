@@ -17,6 +17,12 @@ on:
       - '**/*.md'
       - 'androidApp/**'
       - '.github/workflows/android.yml'
+  # Publishing a release or a pre-release - from the GitHub UI or with
+  # `gh release create` - attaches the IPA of the run that built that tag.
+  # This workflow never builds during a release and never publishes releases
+  # itself: publishing stays manual.
+  release:
+    types: [published]
   # Manual run from the Actions tab or the API. Leave "ref" empty to build the
   # branch or tag selected in the UI, or type any commit SHA to build exactly
   # that commit.
@@ -28,8 +34,10 @@ on:
         type: string
 
 # A newer push to the same branch or pull request cancels the builds still running.
+# The event name is part of the group so that publishing a release does not
+# cancel the build that pushing its tag started.
 concurrency:
-  group: ios-${{ github.ref }}
+  group: ios-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: true
 
 permissions:
@@ -37,18 +45,16 @@ permissions:
 
 jobs:
   build:
-    name: Build iOS app and IPA
-    # macos-latest is Apple silicon, which matches the iosSimulatorArm64 target
-    # that shared/build.gradle.kts declares. The image's default Xcode is used;
-    # pin it with "sudo xcode-select -s /Applications/Xcode_<version>.app" if you
-    # ever need a reproducible toolchain.
+    name: Build the unsigned IPA
+    # A release event has nothing to build: see "attach" below.
+    if: github.event_name != 'release'
+    # macos-latest is Apple silicon and has the iOS SDKs installed. The image's
+    # default Xcode is used; pin it with
+    # "sudo xcode-select -s /Applications/Xcode_<version>.app" if you ever need a
+    # reproducible toolchain.
     runs-on: macos-latest
-    # Two full builds (simulator Debug, device Release) plus the first-run
-    # Kotlin/Native toolchain download.
+    # One full Release build plus the first-run Kotlin/Native toolchain download.
     timeout-minutes: 75
-
-    env:
-      XCODE_CONFIGURATION: Debug
 
     steps:
       - name: Check out repository
@@ -95,36 +101,11 @@ jobs:
       # ./gradlew :shared:embedAndSignAppleFrameworkForXcode, which builds the
       # Kotlin framework for the requested SDK and links it into the app.
       # The framework is static, so nothing has to be embedded or signed, and
-      # CODE_SIGNING_ALLOWED=NO lets every build run without certificates.
-      - name: Build iOS app for the simulator
-        working-directory: iosApp
-        run: |
-          xcodebuild \
-            -project iosApp.xcodeproj \
-            -scheme iosApp \
-            -configuration "$XCODE_CONFIGURATION" \
-            -sdk iphonesimulator \
-            -arch arm64 \
-            -derivedDataPath "$RUNNER_TEMP/DerivedData-simulator" \
-            CODE_SIGNING_ALLOWED=NO \
-            build
-
-      - name: Package the simulator app
-        run: |
-          APP="$RUNNER_TEMP/DerivedData-simulator/Build/Products/$XCODE_CONFIGURATION-iphonesimulator/MavlinkJoystickIOS.app"
-          test -d "$APP"
-          ditto -c -k --sequesterRsrc --keepParent "$APP" "$RUNNER_TEMP/mavlink-joystick-simulator.zip"
-
-      - name: Upload the simulator app
-        uses: actions/upload-artifact@v7
-        with:
-          name: mavlink-joystick-simulator
-          path: ${{ runner.temp }}/mavlink-joystick-simulator.zip
-          if-no-files-found: error
-
+      # CODE_SIGNING_ALLOWED=NO lets the build run without certificates.
+      #
       # An .ipa is a zip whose Payload/ folder contains the .app. Building against
-      # iphoneos compiles the iosArm64 target - the simulator build above only
-      # covers iosSimulatorArm64 - so this also keeps the device target green.
+      # iphoneos compiles the iosArm64 target; the iosSimulatorArm64 target is not
+      # built here, because only the device IPA is published.
       # Release configuration is used so release-mode Kotlin/Native linking is
       # covered too. No Apple credentials are available on CI, so the app is built
       # unsigned and the .ipa must be re-signed before it can be installed.
@@ -153,9 +134,94 @@ jobs:
             "$RUNNER_TEMP/mavlink-joystick-unsigned.ipa"
           echo "::notice::The IPA is unsigned: re-sign it with a development certificate before installing it on a device."
 
+      # "archive: false" stores the IPA as a plain file instead of wrapping it in
+      # another zip. The artifact is then named after the file, so it shows up as
+      # mavlink-joystick-unsigned.ipa. The release job below finds it by that name.
       - name: Upload the IPA
         uses: actions/upload-artifact@v7
         with:
-          name: mavlink-joystick-ipa
           path: ${{ runner.temp }}/mavlink-joystick-unsigned.ipa
+          archive: false
           if-no-files-found: error
+
+  attach:
+    name: Attach the IPA to the release
+    # Publishing a release does not rebuild anything: the tag was already built
+    # by the push run, and this job moves that run's artifact onto the release.
+    if: github.event_name == 'release'
+    # No Xcode involved - the IPA is just a file being copied between GitHub's
+    # storage and a release, so a Linux runner is enough.
+    runs-on: ubuntu-latest
+    # Waiting for the tag build to finish dominates; see the loop below.
+    timeout-minutes: 45
+    permissions:
+      # A job-level block replaces the workflow-level permissions, so only what
+      # this job needs is listed: release assets and the other run's artifacts.
+      contents: write
+      actions: read
+    steps:
+      - name: Find the run that built the release commit
+        id: run
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # GITHUB_SHA of a release event is the commit the tag points to, so the
+          # push run that built it is the one to take the artifact from. A branch
+          # push of the same commit produces an identical IPA, so it is accepted
+          # too - what matters is the commit, not which ref announced it.
+          # Publishing a release right after pushing a tag is common, so wait for
+          # the build instead of failing: 60 attempts, 30 seconds apart.
+          RUNS_URL="repos/$GITHUB_REPOSITORY/actions/workflows/ios.yml/runs?event=push&head_sha=$GITHUB_SHA&per_page=20"
+          RUN_ID=""
+          for attempt in $(seq 1 60); do
+            RUNS=$(gh api "$RUNS_URL")
+            RUN_ID=$(printf '%s' "$RUNS" | jq -r '[.workflow_runs[] | select(.conclusion == "success")][0].id // ""')
+            if [ -n "$RUN_ID" ]; then
+              break
+            fi
+            # Nothing successful yet. If every run for this commit has finished
+            # without success, waiting longer cannot help.
+            if printf '%s' "$RUNS" | jq -e '(.workflow_runs | length) > 0 and all(.workflow_runs[]; .status == "completed")' > /dev/null; then
+              echo "::error::No successful build of $GITHUB_SHA. Check the tag build in the Actions tab, then re-run this job."
+              exit 1
+            fi
+            echo "Waiting for the build of $GITHUB_SHA to finish (attempt $attempt/60)..."
+            sleep 30
+          done
+          if [ -z "$RUN_ID" ]; then
+            echo "::error::Timed out waiting for a successful build of $GITHUB_SHA."
+            exit 1
+          fi
+          # The artifact of an unarchived upload is named after its file.
+          ARTIFACT=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$RUN_ID/artifacts" \
+            --jq '[.artifacts[].name | select(startswith("mavlink-joystick") and endswith(".ipa"))][0] // ""')
+          if [ -z "$ARTIFACT" ]; then
+            echo "::error::Run $RUN_ID has no mavlink-joystick IPA artifact (it may have expired)."
+            exit 1
+          fi
+          echo "run-id=$RUN_ID" >> "$GITHUB_OUTPUT"
+          echo "artifact=$ARTIFACT" >> "$GITHUB_OUTPUT"
+          echo "Taking $ARTIFACT from run $RUN_ID."
+
+      # download-artifact v8 is the first release that can fetch artifacts
+      # uploaded with "archive: false"; v7 would try to unzip them.
+      - name: Download the IPA from that run
+        uses: actions/download-artifact@v8
+        with:
+          name: ${{ steps.run.outputs.artifact }}
+          run-id: ${{ steps.run.outputs.run-id }}
+          github-token: ${{ github.token }}
+          path: ${{ runner.temp }}/release
+
+      # Release assets are plain files, so the IPA is attached as-is, without a
+      # zip. An asset with the same name from an earlier attempt is replaced.
+      - name: Attach the IPA to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          IPA=$(find "$RUNNER_TEMP/release" -type f -name '*.ipa' -print -quit)
+          test -n "$IPA"
+          gh release view "$TAG" > /dev/null
+          gh release upload "$TAG" "$IPA" --clobber
+          echo "::notice::Attached $(basename "$IPA") to the release $TAG."
