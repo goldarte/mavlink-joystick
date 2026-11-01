@@ -94,43 +94,54 @@ that key is configured.
 
 ## iOS
 
-Requires iOS 18.2 or newer on a 64-bit device. Only the device build is
-published; a simulator build cannot be installed on an iPhone or an iPad. 18.2 is
-the deployment target of the Xcode project, so an older device needs a build with
-a lower `IPHONEOS_DEPLOYMENT_TARGET`, see [BUILD.md](./BUILD.md).
+Requires iOS 18.2 or newer on a 64-bit device. The released IPA is unsigned: it carries no code signature and no provisioning
+profile, and iOS only starts apps that are signed for the device. It can be signed
+and installed in one step by [iloader](https://iloader.app), a small desktop
+application that works with an ordinary Apple ID - free or paid, no Mac and no
+Xcode involved. iloader runs on Windows, macOS and Ubuntu; all three are covered
+below.
 
-### Sign and install with a sideloading tool
+### Install iloader
 
-The simplest route is a sideloading tool - [SideStore](https://sidestore.io),
-[AltStore](https://altstore.io) or [Sideloadly](https://sideloadly.io) - which
-re-signs the app and installs it in one step:
+Take the build for your system from the
+[iloader releases](https://github.com/nab138/iloader/releases).
 
-1. Install the tool on a computer and connect the phone by cable. On Windows the
-   Apple mobile device driver has to be installed as well; it comes with iTunes.
-   Unlock the phone and accept **Trust This Computer**.
-2. Select the downloaded `.ipa` and the connected device.
-3. Sign in with an Apple ID. The tool registers the device with the account,
-   creates a development signing certificate and a provisioning profile, and
-   installs the app under its own bundle identifier.
-4. Launch the app. A free Apple ID is enough, but the signature then expires
-   after 7 days and has to be refreshed by the tool; a paid Apple Developer
-   Program account keeps it valid for a year. The developer certificate has to
-   be trusted once on the device - see below.
+**Windows.** Install `iloader-windows-x64.msi`. The phone is only detected when
+the Apple mobile device driver is present, so install **Apple Devices** from the
+Microsoft Store (or iTunes) as well. If SmartScreen warns about an unknown
+publisher, choose **More info → Run anyway**.
 
-The tools also work over Wi-Fi in most setups, which is handy when the phone is
-mounted on the vehicle.
+**macOS.** Open `iloader-darwin-universal.dmg` and copy *iloader* to
+**Applications**, or run `brew install --cask iloader` (a community-maintained
+cask). The build is universal, for Intel and Apple silicon, signed with a
+Developer ID certificate and notarized, so it opens without extra steps, and
+nothing else has to be installed.
 
-### Install with Xcode
+**Ubuntu** (22.04 or newer). Install `usbmuxd`, then the `.deb`:
 
-With a Mac you can build and install the app yourself instead of re-signing a
-release asset - that path signs the app with your own team automatically:
+```shell
+sudo apt install usbmuxd
+sudo apt install ./iloader-linux-amd64.deb
+```
 
-- open [iosApp.xcodeproj](./iosApp/iosApp.xcodeproj) in Xcode,
-- set your team in the **Signing & Capabilities** tab of the target,
-- connect the device and run the scheme.
+An AppImage (`chmod +x iloader-linux-amd64.AppImage`, then run it) and RPM
+builds are published too, for both `amd64` and `arm64`.
 
-The steps are the ones from [BUILD.md](./BUILD.md); nothing in the release asset
-is needed for this route.
+### Sign and install the IPA
+
+1. Connect the iPhone by cable, unlock it, and accept **Trust This Computer**. 
+2. Start iloader and sign in with an Apple ID. A free account is enough.
+3. Select your iPhone in iDevice section.
+4. Choose **Import IPA** and select `mavlink-joystick-v2.0-unsigned.ipa`.
+   iloader registers the device with the account, creates a development
+   certificate and a provisioning profile, re-signs the app and installs it.
+5. Launch **Mavlink Joystick** on the phone, then trust the certificate as
+   described below.
+
+A free Apple ID signs the app for 7 days and allows three installed apps at a
+time; a paid Apple Developer Program account signs it for a year. When a free
+signature expires, connect the phone again and repeat step 3 with the same IPA
+file: the app is replaced in place and its settings survive.
 
 ### Trust the developer certificate
 
@@ -142,33 +153,6 @@ trusted on the device:
 
 The entry only exists after the first installation attempt. Launch the app again
 once it is trusted.
-
-### Re-signing manually
-
-Re-signing by hand is possible with the `codesign` command from the Xcode
-command line tools, an Apple development certificate, and a provisioning
-profile that covers the device's UDID:
-
-```shell
-# 1. Unpack the archive.
-unzip mavlink-joystick-v2.0-unsigned.ipa -d ipa
-
-# 2. Embed a development profile that covers this device.
-cp Your.mobileprovision ipa/Payload/MavlinkJoystickIOS.app/embedded.mobileprovision
-
-# 3. Sign the app. The entitlements (application-identifier, team identifier,
-#    and get-task-allow for development profiles) must come from that profile.
-codesign -f -s "Apple Development: you@example.com" \
-  --entitlements entitlements.plist ipa/Payload/MavlinkJoystickIOS.app
-
-# 4. Repack, keeping the Payload/ layout.
-cd ipa && zip -qr ../mavlink-joystick-signed.ipa Payload
-```
-
-The bundle identifier has to match the `application-identifier` entitlement in
-the profile, so a profile issued for a different app id cannot be used as it is.
-Installing the result still needs Xcode's **Devices and Simulators** window or
-the `ideviceinstaller` tool.
 
 ## After installing
 
