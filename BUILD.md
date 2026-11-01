@@ -95,9 +95,21 @@ artifact, and attaches it to the release:
    `gh release create v1.2.3 --notes-file notes.md`, adding `--prerelease` if you
    want a pre-release. Pre-releases are real releases too, so the flow is the
    same.
-3. The release job takes `mavlink-joystick.apk` and `mavlink-joystick-unsigned.ipa`
-   from that run and attaches them as plain assets — no zips — replacing
-   same-named assets from an earlier attempt.
+3. The release job takes the artifact of that run and attaches it as a plain
+   asset — no zip — renamed after the release tag:
+   `mavlink-joystick-v2.0-rc2.apk` or `mavlink-joystick-v2.0-rc2-unsigned.apk`,
+   and `mavlink-joystick-v2.0-rc2-unsigned.ipa` for iOS. The `-unsigned` marker
+   survives the rename, so an unsigned build cannot be mistaken for a signed
+   one. Same-named assets from an earlier attempt are replaced.
+
+Artifacts inside a workflow run keep their plain names — only release assets
+carry the version. A release that was published before the version was added to
+the name still holds the old `mavlink-joystick.apk`; the job warns about it
+rather than deleting an asset that may already be linked somewhere:
+
+```shell
+gh release delete-asset v2.0-rc2 mavlink-joystick.apk -R goldarte/mavlink-joystick
+```
 
 The job looks for a successful `push` run of the release commit and waits up to
 30 minutes for one to finish, so publishing a release immediately after pushing

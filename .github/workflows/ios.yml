@@ -230,13 +230,28 @@ jobs:
           path: ${{ runner.temp }}/release
 
       # Release assets are plain files, so the IPA is attached as-is, without a
-      # zip. An asset with the same name from an earlier attempt is replaced.
+      # zip, and renamed to carry the release version: a bare
+      # mavlink-joystick-unsigned.ipa in a release says nothing about which build
+      # it is. An asset with the same name from an earlier attempt is replaced.
       - name: Attach the IPA to the release
         run: |
-          IPA=$(find "$RUNNER_TEMP/release" -type f -name '*.ipa' -print -quit)
-          test -n "$IPA"
+          SRC=$(find "$RUNNER_TEMP/release" -type f -name '*.ipa' -print -quit)
+          test -n "$SRC"
+          # A tag may contain "/", which an asset name must not.
+          VERSION=${TAG//\//-}
+          NAME="mavlink-joystick-$VERSION-unsigned.ipa"
+          mkdir -p "$RUNNER_TEMP/assets"
+          cp "$SRC" "$RUNNER_TEMP/assets/$NAME"
           # GH_REPO already tells gh which repository to use; -R repeats it on
           # the command itself, so no git remote is ever consulted.
           gh release view "$TAG" -R "$GH_REPO" > /dev/null
-          gh release upload "$TAG" "$IPA" --clobber -R "$GH_REPO"
-          echo "::notice::Attached $(basename "$IPA") to the release $TAG."
+          gh release upload "$TAG" "$RUNNER_TEMP/assets/$NAME" --clobber -R "$GH_REPO"
+          echo "::notice::Attached $NAME to the release $TAG."
+          # Releases published before the version was added to the name still
+          # carry the artifact under its plain name. Point it out instead of
+          # deleting an asset somebody may have linked to.
+          LEGACY=$(basename "$SRC")
+          if [ "$LEGACY" != "$NAME" ] &&
+             gh release view "$TAG" -R "$GH_REPO" --json assets --jq '.assets[].name' | grep -Fxq "$LEGACY"; then
+            echo "::warning::The release also has the old $LEGACY; drop it with: gh release delete-asset $TAG $LEGACY -R $GH_REPO"
+          fi
