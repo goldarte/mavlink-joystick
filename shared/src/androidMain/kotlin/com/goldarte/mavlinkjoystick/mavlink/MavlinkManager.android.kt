@@ -532,7 +532,9 @@ class MavlinkManagerAndroid internal constructor(
 
         handleHeartbeat(
             customMode = heartbeat.customMode(),
-            autopilot = heartbeat.autopilot().entry().toCommonAutopilot(),
+            // The raw value is used because the library may not know the newest autopilot types
+            // (Flix included) and its enum entry is null for them.
+            autopilot = mavlinkAutopilotOf(heartbeat.autopilot().value()),
             baseMode = heartbeat.baseMode().value(),
             now = System.currentTimeMillis()
         )
@@ -561,11 +563,3 @@ class MavlinkManagerAndroid internal constructor(
         const val RETRY_DELAY_MS = 1000L
     }
 }
-
-private fun MavAutopilot.toCommonAutopilot(): MavlinkAutopilot =
-    when (this) {
-        MavAutopilot.MAV_AUTOPILOT_ARDUPILOTMEGA -> MavlinkAutopilot.ArduPilotMega
-        MavAutopilot.MAV_AUTOPILOT_PX4 -> MavlinkAutopilot.Px4
-        MavAutopilot.MAV_AUTOPILOT_GENERIC -> MavlinkAutopilot.Generic
-        else -> MavlinkAutopilot.Other
-    }

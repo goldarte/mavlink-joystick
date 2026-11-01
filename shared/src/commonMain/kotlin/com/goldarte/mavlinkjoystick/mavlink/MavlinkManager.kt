@@ -226,7 +226,8 @@ abstract class BaseMavlinkManager(
         when (autopilot) {
             MavlinkAutopilot.ArduPilotMega -> "ArduPilot"
             MavlinkAutopilot.Px4 -> "PX4"
-            MavlinkAutopilot.Generic -> "Flix"
+            MavlinkAutopilot.Flix -> "Flix"
+            MavlinkAutopilot.Generic -> "Generic"
             MavlinkAutopilot.Other -> ""
         }
 
@@ -282,13 +283,15 @@ abstract class BaseMavlinkManager(
                     else -> "MODE($mainMode:$subMode)"
                 }
             }
-            MavlinkAutopilot.Generic -> when (mode.toInt()) {
+            MavlinkAutopilot.Flix -> when (mode.toInt()) {
                 0 -> "RAW"
                 1 -> "ACRO"
                 2 -> "STAB"
                 3 -> "AUTO"
                 else -> "MODE($mode)"
             }
+            // A generic autopilot's custom modes are unit-specific, so they cannot be named.
+            MavlinkAutopilot.Generic -> "MODE($mode)"
             MavlinkAutopilot.Other -> "MODE($mode)"
         }
 }
@@ -296,9 +299,29 @@ abstract class BaseMavlinkManager(
 enum class MavlinkAutopilot {
     ArduPilotMega,
     Px4,
+    Flix,
     Generic,
     Other,
 }
+
+/**
+ * MAV_AUTOPILOT values from the MAVLink minimal set. They are kept as numbers because the Android
+ * MAVLink library in use predates newest entries (Flix among them) and reports their enum entry as
+ * null, while the raw heartbeat value is always available.
+ */
+internal const val MAV_AUTOPILOT_GENERIC = 0
+internal const val MAV_AUTOPILOT_ARDUPILOTMEGA = 3
+internal const val MAV_AUTOPILOT_PX4 = 12
+internal const val MAV_AUTOPILOT_FLIX = 21
+
+internal fun mavlinkAutopilotOf(value: Int): MavlinkAutopilot =
+    when (value) {
+        MAV_AUTOPILOT_ARDUPILOTMEGA -> MavlinkAutopilot.ArduPilotMega
+        MAV_AUTOPILOT_PX4 -> MavlinkAutopilot.Px4
+        MAV_AUTOPILOT_FLIX -> MavlinkAutopilot.Flix
+        MAV_AUTOPILOT_GENERIC -> MavlinkAutopilot.Generic
+        else -> MavlinkAutopilot.Other
+    }
 
 data class MavlinkConnectionState(
     val armed: Boolean = false,

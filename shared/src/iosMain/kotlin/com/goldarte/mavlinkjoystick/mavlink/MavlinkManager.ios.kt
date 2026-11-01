@@ -414,7 +414,7 @@ class MavlinkManagerIOS(
 
         handleHeartbeat(
             customMode = customMode.toLong(),
-            autopilot = autopilot.toCommonAutopilot(),
+            autopilot = mavlinkAutopilotOf(autopilot),
             baseMode = baseMode,
             now = currentTimeMillis()
         )
@@ -565,14 +565,6 @@ class MavlinkManagerIOS(
 
 }
 
-private fun Int.toCommonAutopilot(): MavlinkAutopilot =
-    when (this) {
-        MAV_AUTOPILOT_ARDUPILOTMEGA -> MavlinkAutopilot.ArduPilotMega
-        MAV_AUTOPILOT_PX4 -> MavlinkAutopilot.Px4
-        MAV_AUTOPILOT_GENERIC -> MavlinkAutopilot.Generic
-        else -> MavlinkAutopilot.Other
-    }
-
 private data class MavlinkMessage(
     val msgId: Int,
     val systemId: Int,
@@ -699,9 +691,6 @@ private const val LOOP_STALL_TOLERANCE_MS = 200L
 
 private const val MAV_CMD_COMPONENT_ARM_DISARM = 400
 private const val MAV_TYPE_GCS = 6
-private const val MAV_AUTOPILOT_GENERIC = 0
-private const val MAV_AUTOPILOT_ARDUPILOTMEGA = 3
-private const val MAV_AUTOPILOT_PX4 = 12
 private const val MAV_MODE_FLAG_CUSTOM_MODE_ENABLED = 1
 private const val SERIAL_CONTROL_DEV_SHELL = 10
 private const val SERIAL_CONTROL_FLAG_RESPOND = 1
