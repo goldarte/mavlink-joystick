@@ -135,8 +135,7 @@ builds are published too, for both `amd64` and `arm64`.
 4. Choose **Import IPA** and select `mavlink-joystick-v2.0-unsigned.ipa`.
    iloader registers the device with the account, creates a development
    certificate and a provisioning profile, re-signs the app and installs it.
-5. Launch **Mavlink Joystick** on the phone, then trust the certificate as
-   described below.
+5. Launch **Mavlink Joystick** on the phone, then trust the certificate and turn on Developer Mode as described below.
 
 A free Apple ID signs the app for 7 days and allows three installed apps at a
 time; a paid Apple Developer Program account signs it for a year. When a free
@@ -153,6 +152,16 @@ trusted on the device:
 
 The entry only exists after the first installation attempt. Launch the app again
 once it is trusted.
+
+### Turn on Developer Mode
+
+If launching the app shows **Developer Mode Required**, iOS has to be switched into Developer Mode once before it runs development-signed apps:
+
+1. Open **Settings → Privacy & Security** and turn on **Developer Mode** under **Security**.
+2. Tap **Restart** in the alert.
+3. After the restart, tap **Enable** in the confirmation dialog and enter the device passcode.
+
+See Apple's [Enabling Developer Mode on a device](https://developer.apple.com/documentation/xcode/enabling-developer-mode-on-a-device#Turn-on-Developer-Mode-in-iOS-iPadOS-watchOS-and-visionOS) for details.
 
 ## After installing
 
