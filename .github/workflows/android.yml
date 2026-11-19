@@ -115,16 +115,15 @@ jobs:
       # multiplatform unit tests run - and must pass - as part of this build.
       # A signed release APK is written to mavlink-joystick.apk, an unsigned one
       # to mavlink-joystick-unsigned.apk.
-      - name: Build the release APK
+      - name: Build the release APK and AAB
         env:
           RELEASE_STORE_FILE: ${{ steps.signing.outputs.store-file }}
           RELEASE_STORE_PASSWORD: ${{ secrets.RELEASE_STORE_PASSWORD }}
           RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
           RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
-        run: ./gradlew :androidApp:assembleRelease --stacktrace
+        run: ./gradlew :androidApp:assembleRelease :androidApp:bundleRelease --stacktrace
 
-      # The APK is the only build output. Its file name is what the artifact is
-      # called and what the release asset is called, so it is resolved once here.
+      # The APK artifact name lets the release job find the signed or unsigned APK.
       - name: Locate the APK
         id: apk
         run: |
@@ -146,6 +145,15 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           path: ${{ steps.apk.outputs.path }}
+          archive: false
+          if-no-files-found: error
+
+      # The APK and AAB share the release signing configuration in Gradle.
+      - name: Upload the signed AAB
+        if: ${{ endsWith(steps.apk.outputs.path, '/mavlink-joystick.apk') }}
+        uses: actions/upload-artifact@v7
+        with:
+          path: androidApp/build/outputs/bundle/release/*.aab
           archive: false
           if-no-files-found: error
 
