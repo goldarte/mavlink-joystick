@@ -1,6 +1,6 @@
 # Политика конфиденциальности MAVLink Joystick
 
-Эта политика относится к Android-приложению MAVLink Joystick (`com.goldarte.mavlinkjoystick`). Разработчик — Hammerwork Studio.
+Эта политика относится к Android-приложению MAVLink Joystick (`com.goldarte.mavlinkjoystick`). Разработчики - Артур Голубцов и Евгений Молотков. Издатель — Hammerwork Studio.
 
 ## Данные и подключение
 
